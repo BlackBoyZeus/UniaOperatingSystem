@@ -1,0 +1,201 @@
+name: Web Frontend Deployment
+
+on:
+  push:
+    branches: ['main', 'production']
+    paths: ['src/web/**']
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        description: 'Deployment Environment'
+        required: true
+        default: 'production'
+        options:
+          - staging
+          - production
+      force_deploy:
+        type: boolean
+        description: 'Force deployment'
+        default: false
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  deployments: write
+  security-events: write
+
+env:
+  NODE_ENV: production
+  VITE_API_URL: ${{ secrets.API_URL }}
+  VITE_LIDAR_ENDPOINT: ${{ secrets.LIDAR_ENDPOINT }}
+  VITE_FLEET_ENDPOINT: ${{ secrets.FLEET_ENDPOINT }}
+  VITE_WEBRTC_CONFIG: ${{ secrets.WEBRTC_CONFIG }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+  ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
+  ECS_SERVICE: ${{ secrets.ECS_SERVICE }}
+
+jobs:
+  build_and_test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: src/web/package-lock.json
+
+      - name: Install Dependencies
+        working-directory: src/web
+        run: npm ci
+
+      - name: Security Scan
+        uses: snyk/actions/node@v3
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+
+      - name: Type Check
+        working-directory: src/web
+        run: npm run typecheck
+
+      - name: Run Unit Tests
+        working-directory: src/web
+        run: npm run test:coverage
+        env:
+          CI: true
+
+      - name: Run Integration Tests
+        working-directory: src/web
+        run: npm run cypress:run
+        env:
+          CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+
+      - name: Run Performance Tests
+        working-directory: src/web
+        run: |
+          npm run cypress:run -- --config-file cypress.perf.config.js
+          npm run analyze
+
+      - name: Build Production Bundle
+        working-directory: src/web
+        run: npm run build
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign Build Artifacts
+        run: |
+          echo "${{ secrets.COSIGN_KEY }}" > cosign.key
+          cosign sign-blob --key cosign.key src/web/dist/**/*
+          rm cosign.key
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: web-build
+          path: |
+            src/web/dist
+            src/web/coverage
+            src/web/bundle-analysis.html
+            src/web/test-reports
+
+  deploy:
+    name: Deploy to AWS
+    needs: build_and_test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ github.event.inputs.environment || 'production' }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: web-build
+          path: src/web/dist
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.OIDC_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v1
+        id: ecr-login
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v4
+        with:
+          context: src/web
+          push: true
+          tags: |
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_ENV=production
+            VITE_API_URL=${{ env.VITE_API_URL }}
+            VITE_LIDAR_ENDPOINT=${{ env.VITE_LIDAR_ENDPOINT }}
+            VITE_FLEET_ENDPOINT=${{ env.VITE_FLEET_ENDPOINT }}
+            VITE_WEBRTC_CONFIG=${{ env.VITE_WEBRTC_CONFIG }}
+
+      - name: Sign Container Image
+        run: |
+          cosign sign --key env://COSIGN_KEY ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+        env:
+          COSIGN_KEY: ${{ secrets.COSIGN_KEY }}
+
+      - name: Deploy to ECS
+        run: |
+          # Get current task definition
+          TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition ${{ env.ECS_SERVICE }} --query taskDefinition)
+          
+          # Create new task definition revision
+          NEW_TASK_DEFINITION=$(echo $TASK_DEFINITION | jq --arg IMAGE "${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}" '.containerDefinitions[0].image = $IMAGE')
+          
+          # Register new task definition
+          NEW_TASK_ARN=$(aws ecs register-task-definition --cli-input-json "$NEW_TASK_DEFINITION" --query taskDefinition.taskDefinitionArn --output text)
+          
+          # Update service with blue-green deployment
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_SERVICE }} \
+            --task-definition $NEW_TASK_ARN \
+            --deployment-configuration "deploymentType=BLUE_GREEN,blueGreenDeploymentConfiguration={terminationTimeoutMinutes=5}" \
+            --force-new-deployment
+
+      - name: Monitor Deployment
+        run: |
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_SERVICE }}
+
+      - name: Verify Deployment Health
+        run: |
+          TASK_ID=$(aws ecs list-tasks --cluster ${{ env.ECS_CLUSTER }} --service-name ${{ env.ECS_SERVICE }} --query 'taskArns[0]' --output text)
+          aws ecs wait tasks-running --cluster ${{ env.ECS_CLUSTER }} --tasks $TASK_ID
+
+      - name: Cleanup Old Task Definitions
+        if: success()
+        run: |
+          OLD_TASK_ARNS=$(aws ecs list-task-definitions --family-prefix ${{ env.ECS_SERVICE }} --status ACTIVE --query 'taskDefinitionArns[:-5]' --output text)
+          for ARN in $OLD_TASK_ARNS; do
+            aws ecs deregister-task-definition --task-definition $ARN
+          done
