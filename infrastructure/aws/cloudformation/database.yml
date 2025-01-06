@@ -1,0 +1,220 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TALD UNIA Platform - Database Infrastructure
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, staging, prod]
+    Description: Deployment environment
+  
+  BackupRetentionDays:
+    Type: Number
+    Default: 35
+    Description: Number of days to retain backups
+
+Conditions:
+  IsProd: !Equals [!Ref Environment, prod]
+
+Resources:
+  # DynamoDB Tables
+  DeviceTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${Environment}-tald-devices
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: device_id
+          AttributeType: S
+        - AttributeName: hardware_id
+          AttributeType: S
+        - AttributeName: last_active
+          AttributeType: S
+      KeySchema:
+        - AttributeName: device_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: HardwareIdIndex
+          KeySchema:
+            - AttributeName: hardware_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: LastActiveIndex
+          KeySchema:
+            - AttributeName: last_active
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+        KMSMasterKeyId: !ImportValue SecurityStack:DataEncryptionKeyArn
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: TALD-UNIA
+
+  FleetTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${Environment}-tald-fleets
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: fleet_id
+          AttributeType: S
+        - AttributeName: created_at
+          AttributeType: S
+      KeySchema:
+        - AttributeName: fleet_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: CreatedAtIndex
+          KeySchema:
+            - AttributeName: created_at
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+        KMSMasterKeyId: !ImportValue SecurityStack:DataEncryptionKeyArn
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: TALD-UNIA
+
+  SessionTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${Environment}-tald-sessions
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: session_id
+          AttributeType: S
+        - AttributeName: device_id
+          AttributeType: S
+        - AttributeName: start_time
+          AttributeType: S
+      KeySchema:
+        - AttributeName: session_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: DeviceSessionIndex
+          KeySchema:
+            - AttributeName: device_id
+              KeyType: HASH
+            - AttributeName: start_time
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+        KMSMasterKeyId: !ImportValue SecurityStack:DataEncryptionKeyArn
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: TALD-UNIA
+
+  # Redis Cluster Configuration
+  RedisSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      Description: Subnet group for TALD UNIA Redis cluster
+      SubnetIds: !Split [',', !ImportValue NetworkingStack:PrivateSubnets]
+
+  RedisParameterGroup:
+    Type: AWS::ElastiCache::ParameterGroup
+    Properties:
+      CacheParameterGroupFamily: redis6.x
+      Description: Custom parameters for TALD UNIA Redis cluster
+      Properties:
+        maxmemory-policy: volatile-lru
+        timeout: 300
+        notify-keyspace-events: 'Ex'
+
+  RedisCluster:
+    Type: AWS::ElastiCache::ReplicationGroup
+    Properties:
+      ReplicationGroupId: !Sub ${Environment}-tald-redis
+      ReplicationGroupDescription: TALD UNIA Redis Cluster
+      Engine: redis
+      EngineVersion: '6.x'
+      CacheNodeType: cache.r6g.large
+      NumCacheClusters: 3
+      MultiAZEnabled: true
+      AutomaticFailoverEnabled: true
+      CacheParameterGroupName: !Ref RedisParameterGroup
+      CacheSubnetGroupName: !Ref RedisSubnetGroup
+      SecurityGroupIds: 
+        - !ImportValue SecurityStack:DatabaseSecurityGroupId
+      TransitEncryptionEnabled: true
+      AtRestEncryptionEnabled: true
+      KmsKeyId: !ImportValue SecurityStack:DataEncryptionKeyArn
+      SnapshotRetentionLimit: !Ref BackupRetentionDays
+      SnapshotWindow: '00:00-01:00'
+      PreferredMaintenanceWindow: 'sun:01:00-sun:02:00'
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: TALD-UNIA
+
+  # Auto Scaling Configuration for DynamoDB
+  DeviceTableScaling:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties:
+      MaxCapacity: 40000
+      MinCapacity: 5
+      ResourceId: !Sub table/${DeviceTable}
+      RoleARN: !ImportValue SecurityStack:DynamoScalingRoleArn
+      ScalableDimension: dynamodb:table:ReadCapacityUnits
+      ServiceNamespace: dynamodb
+
+  DeviceTableScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub ${Environment}-device-table-scaling
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref DeviceTableScaling
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 70.0
+        PredefinedMetricSpecification:
+          PredefinedMetricType: DynamoDBReadCapacityUtilization
+
+Outputs:
+  DeviceTableName:
+    Description: Name of the Device DynamoDB table
+    Value: !Ref DeviceTable
+    Export:
+      Name: !Sub ${AWS::StackName}:DeviceTableName
+
+  DeviceTableStreamArn:
+    Description: ARN of the Device table stream
+    Value: !GetAtt DeviceTable.StreamArn
+    Export:
+      Name: !Sub ${AWS::StackName}:DeviceTableStreamArn
+
+  RedisClusterEndpoint:
+    Description: Primary endpoint for Redis cluster
+    Value: !GetAtt RedisCluster.PrimaryEndPoint.Address
+    Export:
+      Name: !Sub ${AWS::StackName}:RedisClusterEndpoint
+
+  RedisReaderEndpoint:
+    Description: Reader endpoint for Redis cluster
+    Value: !GetAtt RedisCluster.ReadEndPoint.Address
+    Export:
+      Name: !Sub ${AWS::StackName}:RedisReaderEndpoint
