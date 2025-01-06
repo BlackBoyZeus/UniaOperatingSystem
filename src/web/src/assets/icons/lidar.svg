@@ -1,0 +1,120 @@
+<svg 
+  viewBox="0 0 24 24"
+  fill="currentColor"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-label="LiDAR icon"
+  shape-rendering="geometricPrecision"
+  vector-effect="non-scaling-stroke"
+  transform-origin="center"
+  style="enable-background: new 0 0 24 24; will-change: transform, opacity">
+  
+  <!-- Base circle representing LiDAR sensor -->
+  <circle 
+    cx="12" 
+    cy="12" 
+    r="3"
+    class="lidar-base"
+    style="transform-origin: center">
+    <animate
+      attributeName="opacity"
+      dur="300ms"
+      values="0.8;1;0.8"
+      repeatCount="indefinite"
+      calcMode="spline"
+      keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>
+  </circle>
+
+  <!-- Scanning rays -->
+  <g class="lidar-rays">
+    <!-- Primary scanning beam -->
+    <path 
+      d="M12 5v2M12 17v2M5 12h2M17 12h2"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round">
+      <animate
+        attributeName="transform"
+        type="rotate"
+        from="0 12 12"
+        to="360 12 12"
+        dur="1000ms"
+        repeatCount="indefinite"
+        calcMode="linear"/>
+    </path>
+
+    <!-- Secondary scanning beams -->
+    <path 
+      d="M7.05 7.05l1.41 1.41M15.54 15.54l1.41 1.41M7.05 16.95l1.41-1.41M15.54 8.46l1.41-1.41"
+      stroke="currentColor"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      opacity="0.6">
+      <animate
+        attributeName="transform"
+        type="rotate"
+        from="0 12 12"
+        to="-360 12 12"
+        dur="2000ms"
+        repeatCount="indefinite"
+        calcMode="linear"/>
+    </path>
+  </g>
+
+  <!-- Status indicator ring -->
+  <circle
+    cx="12"
+    cy="12"
+    r="8"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.5"
+    stroke-dasharray="50.26 50.26"
+    class="status-ring">
+    <animate
+      attributeName="stroke-dashoffset"
+      values="0;100.52"
+      dur="1000ms"
+      repeatCount="indefinite"
+      calcMode="linear"/>
+  </circle>
+
+  <!-- High-contrast focus indicator for accessibility -->
+  <circle
+    cx="12"
+    cy="12"
+    r="11"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1"
+    opacity="0"
+    class="focus-ring">
+    <set
+      attributeName="opacity"
+      to="0.2"
+      begin="focus"
+      end="blur"/>
+  </circle>
+
+  <style>
+    @media (prefers-reduced-motion: reduce) {
+      .lidar-rays animate,
+      .status-ring animate {
+        animation-duration: 0s;
+      }
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      .status-ring {
+        opacity: 0.8;
+      }
+    }
+
+    @media (forced-colors: active) {
+      * {
+        stroke: ButtonText;
+        fill: ButtonText;
+      }
+    }
+  </style>
+</svg>
