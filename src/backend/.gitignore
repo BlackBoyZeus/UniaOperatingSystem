@@ -1,0 +1,100 @@
+# Node.js dependencies and debug logs
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.pnpm-debug.log
+package-lock.json
+yarn.lock
+.npm/
+
+# Build and compilation output
+dist/
+build/
+*.js.map
+*.d.ts
+.tsbuildinfo
+
+# Environment and configuration files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.*.local
+*.pem
+.npmrc
+
+# Test coverage and reports
+coverage/
+.nyc_output/
+junit.xml
+test-report.xml
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+.history/
+*.sublime-workspace
+*.sublime-project
+.project
+.settings/
+.classpath
+
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+*.lnk
+
+# Application logs and temp files
+logs/
+*.log
+temp/
+.temp/
+tmp/
+.tmp/
+
+# AWS credentials and config
+.aws/
+aws.config.json
+credentials.json
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Misc development files
+.cache/
+.eslintcache
+.stylelintcache
+.prettiercache
+*.bak
+*.backup
+*.old
+*.tmp
+*~
+
+# Binary and large files
+*.zip
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Debug files
+debug/
+.debug/
+*.debug
+
+# Local development overrides
+*.local
+*.dev
+.env.override
+config.local.js
