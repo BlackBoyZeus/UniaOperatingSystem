@@ -1,0 +1,200 @@
+/* TALD UNIA Component Styles
+ * Enterprise-grade gaming UI components with GPU acceleration,
+ * HDR support, and power-aware optimizations
+ * @version 1.0.0
+ */
+
+@import 'variables.css';
+
+/* Base Button Component
+ * GPU-accelerated gaming button with HDR glow effects
+ * and power-aware animations
+ */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 2);
+  font-family: var(--font-family-gaming);
+  font-weight: var(--font-weight-medium);
+  font-feature-settings: var(--font-feature-gaming);
+  color: var(--color-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-primary);
+  border-radius: calc(var(--spacing-unit) * 0.5);
+  cursor: pointer;
+  user-select: none;
+  transition: all var(--animation-duration);
+  transform: var(--animation-gpu);
+  will-change: var(--animation-will-change);
+  backface-visibility: hidden;
+  content-visibility: auto;
+  contain: content;
+}
+
+.button:hover {
+  background: color-mix(in display-p3, var(--color-primary) 15%, var(--color-surface));
+  box-shadow: var(--effect-glow);
+  transform: var(--animation-gpu) scale(1.02);
+}
+
+.button:active {
+  transform: var(--animation-gpu) scale(0.98);
+}
+
+/* Card Component
+ * Gaming-styled container with depth effects
+ */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-primary);
+  border-radius: calc(var(--spacing-unit) * 1);
+  padding: calc(var(--spacing-unit) * 2);
+  transform: var(--animation-gpu);
+  will-change: var(--animation-will-change);
+  transition: transform var(--animation-duration);
+  contain: content;
+}
+
+/* Input Component
+ * Gaming-styled form inputs with HDR focus states
+ */
+.input {
+  font-family: var(--font-family-gaming);
+  background: var(--color-background);
+  border: 1px solid var(--color-primary);
+  border-radius: calc(var(--spacing-unit) * 0.5);
+  padding: calc(var(--spacing-unit) * 1.5);
+  color: var(--color-primary);
+  transition: all var(--animation-duration);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-secondary);
+  box-shadow: var(--effect-glow);
+}
+
+/* Modal Component
+ * Overlay container with backdrop blur
+ */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: color-mix(in display-p3, var(--color-background) 80%, transparent);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  opacity: 0;
+  transform: var(--animation-gpu);
+  transition: opacity var(--animation-duration);
+  contain: strict;
+}
+
+.modal.active {
+  opacity: 1;
+}
+
+/* Dropdown Component
+ * Gaming-styled select menu
+ */
+.dropdown {
+  position: relative;
+  font-family: var(--font-family-gaming);
+  background: var(--color-surface);
+  border: 1px solid var(--color-primary);
+  border-radius: calc(var(--spacing-unit) * 0.5);
+  padding: calc(var(--spacing-unit) * 1.5);
+  cursor: pointer;
+  transform: var(--animation-gpu);
+  will-change: var(--animation-will-change);
+}
+
+/* LiDAR Visualization Components */
+.lidar-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 100;
+  mix-blend-mode: screen;
+  transform: var(--animation-gpu);
+  will-change: var(--animation-will-change);
+  contain: strict;
+  isolation: isolate;
+}
+
+.point-cloud {
+  position: absolute;
+  transform-style: preserve-3d;
+  perspective: 1000px;
+  opacity: var(--lidar-scan-opacity);
+  transform: var(--animation-gpu);
+  will-change: var(--animation-will-change);
+  contain: strict;
+}
+
+.point-cloud .point {
+  width: var(--lidar-point-size);
+  height: var(--lidar-point-size);
+  background: var(--color-primary);
+  border-radius: 50%;
+  position: absolute;
+}
+
+.mesh-render {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  stroke: var(--color-secondary);
+  stroke-width: var(--lidar-mesh-width);
+  fill: none;
+  transform: var(--animation-gpu);
+  will-change: var(--animation-will-change);
+  contain: strict;
+}
+
+/* HDR Display Support */
+@media (dynamic-range: high) {
+  .button {
+    --button-glow: 0 0 20px var(--color-primary-hdr);
+  }
+
+  .point-cloud .point {
+    background: var(--color-primary-hdr);
+  }
+
+  .mesh-render {
+    stroke: var(--color-secondary-hdr);
+  }
+}
+
+/* Power Save Mode Optimizations */
+@media (prefers-reduced-power: high) {
+  .point-cloud {
+    --point-cloud-density: 0.5;
+  }
+
+  .lidar-overlay {
+    --lidar-scan-opacity: 0.6;
+  }
+}
+
+/* Performance Mode */
+@media (prefers-reduced-motion: reduce) {
+  .button,
+  .card,
+  .modal,
+  .dropdown {
+    transition-duration: var(--animation-duration-power-save);
+  }
+
+  .point-cloud,
+  .mesh-render {
+    will-change: auto;
+  }
+}
