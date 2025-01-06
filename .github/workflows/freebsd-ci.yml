@@ -1,0 +1,186 @@
+name: FreeBSD CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  FREEBSD_VERSION: '13.0-RELEASE'
+  BUILD_TYPE: 'Release'
+  TEST_TIMEOUT: '1200'
+  CCACHE_DIR: '/tmp/ccache'
+  PARALLEL_JOBS: '4'
+  CACHE_VERSION: 'v1'
+  PERFORMANCE_THRESHOLD:
+    SCAN_LATENCY_MS: '50'
+    NETWORK_LATENCY_MS: '50'
+    MIN_FPS: '60'
+    MIN_BATTERY_HOURS: '4'
+
+jobs:
+  setup-freebsd:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          lfs: true
+          fetch-depth: 0
+
+      - name: Setup FreeBSD build environment
+        id: setup
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang-15 \
+            lldb-15 \
+            lld-15 \
+            ninja-build \
+            cmake \
+            ccache
+
+      - name: Cache build dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ${{ env.CCACHE_DIR }}
+            ~/.ccache
+          key: ${{ runner.os }}-ccache-${{ env.CACHE_VERSION }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-ccache-${{ env.CACHE_VERSION }}-
+
+  build-matrix:
+    needs: setup-freebsd
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [kernel, drivers, libraries, game-engine]
+        include:
+          - component: kernel
+            build_path: src/freebsd/kernel
+            test_path: src/freebsd/tests/kernel
+          - component: drivers
+            build_path: src/freebsd/drivers
+            test_path: src/freebsd/tests/drivers
+          - component: libraries
+            build_path: src/freebsd/lib
+            test_path: src/freebsd/tests/lib
+          - component: game-engine
+            build_path: src/freebsd/game
+            test_path: src/freebsd/tests/game
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          lfs: true
+
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ runner.os }}-ccache-${{ env.CACHE_VERSION }}-${{ matrix.component }}-${{ github.sha }}
+
+      - name: Build ${{ matrix.component }}
+        run: |
+          cd ${{ matrix.build_path }}
+          ./build.sh -j${{ env.PARALLEL_JOBS }} \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DUSE_CCACHE=ON
+
+      - name: Run component tests
+        run: |
+          cd ${{ matrix.test_path }}
+          ./test.sh \
+            --timeout ${{ env.TEST_TIMEOUT }} \
+            --parallel ${{ env.PARALLEL_JOBS }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.component }}-artifacts
+          path: |
+            ${{ matrix.build_path }}/build
+            ${{ matrix.test_path }}/reports
+
+  performance-validation:
+    needs: build-matrix
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+
+      - name: Setup test environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            nvidia-cuda-toolkit \
+            vulkan-tools \
+            lidar-tools
+
+      - name: Validate LiDAR performance
+        run: |
+          ./test.sh validate-lidar \
+            --latency-threshold ${{ env.PERFORMANCE_THRESHOLD.SCAN_LATENCY_MS }} \
+            --resolution 0.01 \
+            --range 5000
+
+      - name: Validate network performance
+        run: |
+          ./test.sh validate-network \
+            --latency-threshold ${{ env.PERFORMANCE_THRESHOLD.NETWORK_LATENCY_MS }} \
+            --fleet-size 32
+
+      - name: Validate game engine performance
+        run: |
+          ./test.sh validate-game-engine \
+            --min-fps ${{ env.PERFORMANCE_THRESHOLD.MIN_FPS }} \
+            --vulkan-validation
+
+      - name: Generate performance report
+        run: |
+          ./test.sh generate-report \
+            --format html \
+            --output performance-report.html
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-results
+          path: |
+            performance-report.html
+            test-logs/
+
+  deploy:
+    needs: performance-validation
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: release-artifacts
+
+      - name: Package release
+        run: |
+          tar czf tald-unia-freebsd.tar.gz release-artifacts/
+
+      - name: Create release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.sha }}
+          release_name: TALD UNIA FreeBSD Build
+          body: |
+            Automated release from CI pipeline
+            Commit: ${{ github.sha }}
+            Build date: ${{ github.event.repository.updated_at }}
+          draft: false
+          prerelease: false
