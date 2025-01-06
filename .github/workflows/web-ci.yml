@@ -1,0 +1,154 @@
+name: Web CI
+
+on:
+  push:
+    branches: ['main', 'develop']
+    paths: ['src/web/**']
+  pull_request:
+    branches: ['main', 'develop']
+    paths: ['src/web/**']
+
+env:
+  NODE_VERSION: '18.x'
+  WORKING_DIRECTORY: 'src/web'
+  PERFORMANCE_THRESHOLD_FPS: '60'
+  PERFORMANCE_THRESHOLD_MEMORY: '4096'
+  PERFORMANCE_THRESHOLD_LATENCY: '50'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          npm ci
+          npm --version
+          node --version
+
+      - name: Type check
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run typecheck
+
+      - name: Build application
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          npm run build
+          npm run analyze
+
+      - name: Validate bundle size
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          if [ -f "dist/stats.json" ]; then
+            BUNDLE_SIZE=$(jq '.assets[].size' dist/stats.json | awk '{sum += $1} END {print sum/1024/1024}')
+            if (( $(echo "$BUNDLE_SIZE > 5" | bc -l) )); then
+              echo "Bundle size exceeds 5MB limit: ${BUNDLE_SIZE}MB"
+              exit 1
+            fi
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-output
+          path: ${{ env.WORKING_DIRECTORY }}/dist
+          retention-days: 7
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm ci
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: build-output
+          path: ${{ env.WORKING_DIRECTORY }}/dist
+
+      - name: Run ESLint
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run lint
+
+      - name: Run unit tests
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          npm run test:coverage -- --maxWorkers=2
+          
+      - name: Run E2E tests
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          npm run cypress:run -- --config video=true,screenshotOnRunFailure=true
+        env:
+          CYPRESS_PERFORMANCE_FPS: ${{ env.PERFORMANCE_THRESHOLD_FPS }}
+          CYPRESS_PERFORMANCE_MEMORY: ${{ env.PERFORMANCE_THRESHOLD_MEMORY }}
+          CYPRESS_PERFORMANCE_LATENCY: ${{ env.PERFORMANCE_THRESHOLD_LATENCY }}
+
+      - name: Validate performance metrics
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          if [ -f "cypress/results/performance.json" ]; then
+            FPS=$(jq '.metrics.averageFPS' cypress/results/performance.json)
+            MEMORY=$(jq '.metrics.maxMemory' cypress/results/performance.json)
+            LATENCY=$(jq '.metrics.averageLatency' cypress/results/performance.json)
+            
+            if (( $(echo "$FPS < $PERFORMANCE_THRESHOLD_FPS" | bc -l) )); then
+              echo "FPS below threshold: $FPS"
+              exit 1
+            fi
+            
+            if (( $(echo "$MEMORY > $PERFORMANCE_THRESHOLD_MEMORY" | bc -l) )); then
+              echo "Memory usage exceeds threshold: $MEMORY MB"
+              exit 1
+            fi
+            
+            if (( $(echo "$LATENCY > $PERFORMANCE_THRESHOLD_LATENCY" | bc -l) )); then
+              echo "Network latency exceeds threshold: $LATENCY ms"
+              exit 1
+            fi
+          fi
+
+      - name: Upload test coverage
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: ${{ env.WORKING_DIRECTORY }}/coverage
+          retention-days: 7
+
+      - name: Upload E2E artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: cypress-artifacts
+          path: |
+            ${{ env.WORKING_DIRECTORY }}/cypress/videos
+            ${{ env.WORKING_DIRECTORY }}/cypress/screenshots
+            ${{ env.WORKING_DIRECTORY }}/cypress/results
+          retention-days: 7
