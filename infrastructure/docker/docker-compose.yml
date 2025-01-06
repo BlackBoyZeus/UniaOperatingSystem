@@ -1,0 +1,214 @@
+version: "3.9"
+
+services:
+  # Backend Service with LiDAR and Fleet Management
+  backend:
+    build:
+      context: ../../src/backend
+      dockerfile: backend.dockerfile
+      args:
+        NODE_ENV: production
+        BUILD_VERSION: ${BUILD_VERSION}
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - REDIS_URL=redis://redis:6379
+      - AWS_REGION=${AWS_REGION}
+      - METRICS_NAMESPACE=TALD/Backend
+      - FLEET_SIZE=32
+      - MAX_LATENCY=50
+      - ENABLE_TRACING=true
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    ports:
+      - "3000:3000"
+      - "8080:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+      prometheus:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+    networks:
+      - tald-network
+    restart: unless-stopped
+
+  # Frontend Web Service
+  web:
+    build:
+      context: ../../src/web
+      dockerfile: web.dockerfile
+      args:
+        API_BASE_URL: ${API_BASE_URL}
+        WEBRTC_SIGNALING_URL: ${WEBRTC_SIGNALING_URL}
+        BUILD_VERSION: ${BUILD_VERSION}
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    networks:
+      - tald-network
+    restart: unless-stopped
+
+  # Analytics Service
+  analytics:
+    build:
+      context: ../../src/backend
+      dockerfile: analytics.dockerfile
+    environment:
+      - NODE_ENV=production
+      - METRICS_NAMESPACE=TALD/Analytics
+      - ELASTICSEARCH_URL=${ELASTICSEARCH_URL}
+      - KINESIS_STREAM_NAME=${KINESIS_STREAM_NAME}
+      - AWS_REGION=${AWS_REGION}
+    depends_on:
+      - prometheus
+      - redis
+    healthcheck:
+      test: ["CMD", "./health-check.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+    networks:
+      - tald-network
+    restart: unless-stopped
+
+  # Redis for Session and State Management
+  redis:
+    image: redis:7.0-alpine
+    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+    networks:
+      - tald-network
+    restart: unless-stopped
+
+  # Prometheus for Metrics Collection
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    volumes:
+      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "9090:9090"
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+    networks:
+      - tald-network
+    restart: unless-stopped
+
+  # Grafana for Metrics Visualization
+  grafana:
+    image: grafana/grafana:9.5.2
+    volumes:
+      - ../monitoring/grafana:/etc/grafana/provisioning
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://grafana:3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    networks:
+      - tald-network
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /data/redis
+      o: bind
+  prometheus-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /data/prometheus
+      o: bind
+  grafana-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /data/grafana
+      o: bind
+
+networks:
+  tald-network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: tald_bridge
+      com.docker.network.bridge.enable_icc: true
+      com.docker.network.bridge.enable_ip_masquerade: true
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
