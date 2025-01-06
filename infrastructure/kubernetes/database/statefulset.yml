@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-cluster
+  namespace: tald-unia
+  labels:
+    app: redis
+    component: cache
+    part-of: tald-unia
+spec:
+  serviceName: redis-cluster
+  replicas: 3
+  selector:
+    matchLabels:
+      app: redis
+  updateStrategy:
+    type: RollingUpdate
+  podManagementPolicy: OrderedReady
+  template:
+    metadata:
+      labels:
+        app: redis
+        component: cache
+    spec:
+      containers:
+      - name: redis
+        # redis:7.0-alpine - Lightweight Redis image optimized for Kubernetes
+        image: redis:7.0-alpine
+        ports:
+        - containerPort: 6379
+          name: redis
+        resources:
+          requests:
+            cpu: "2"
+            memory: 4Gi
+          limits:
+            cpu: "2"
+            memory: 4Gi
+        livenessProbe:
+          tcpSocket:
+            port: 6379
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+        command:
+        - redis-server
+        - --appendonly
+        - "yes"
+        # Configure Redis persistence with multiple save points
+        - --save
+        - "900"  # Save if 1 change in 15 minutes
+        - "1"
+        - --save
+        - "300"  # Save if 10 changes in 5 minutes
+        - "10"
+        - --save
+        - "60"   # Save if 10000 changes in 1 minute
+        - "10000"
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      storageClassName: ebs-sc
+      resources:
+        requests:
+          storage: 50Gi
