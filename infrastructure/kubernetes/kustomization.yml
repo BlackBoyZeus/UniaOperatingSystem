@@ -1,0 +1,97 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Target namespace for all resources
+namespace: tald-unia
+
+# Common labels applied to all resources
+commonLabels:
+  app: tald-unia
+  environment: production
+  managed-by: kustomize
+  component: gaming-platform
+
+# Common annotations applied to all resources
+commonAnnotations:
+  description: "TALD UNIA Gaming Platform"
+  version: "1.0.0"
+  contact: "platform-team@tald-unia.com"
+  security.tald.io/compliance: "required"
+  monitoring.tald.io/metrics: "enabled"
+
+# List of all Kubernetes resources to be managed
+resources:
+  - namespace.yml
+  - fleet/deployment.yml
+  - fleet/service.yml
+  - fleet/hpa.yml
+  - game/deployment.yml
+  - game/service.yml
+  - game/hpa.yml
+  - lidar/deployment.yml
+  - lidar/service.yml
+  - database/statefulset.yml
+  - database/service.yml
+  - monitoring/prometheus.yml
+  - monitoring/grafana.yml
+  - monitoring/alertmanager.yml
+  - networking/ingress.yml
+  - networking/network-policy.yml
+  - security/rbac.yml
+  - security/pod-security-policy.yml
+  - storage/persistent-volume.yml
+
+# ConfigMap generators for different components
+configMapGenerator:
+  - name: tald-fleet-config
+    files:
+      - config/fleet/webrtc.config.ts
+      - config/fleet/mesh.config.ts
+      - config/fleet/discovery.config.ts
+  - name: tald-game-config
+    files:
+      - config/game/engine.config.ts
+      - config/game/physics.config.ts
+      - config/game/lidar.config.ts
+  - name: tald-monitoring-config
+    files:
+      - monitoring/prometheus/game-metrics.yml
+      - monitoring/grafana/fleet-dashboard.yml
+      - monitoring/alertmanager/game-alerts.yml
+
+# Secret generators for sensitive data
+secretGenerator:
+  - name: tald-platform-secrets
+    type: Opaque
+    envs:
+      - .env.production
+    files:
+      - secrets/ssl/tls.key
+      - secrets/ssl/tls.crt
+      - secrets/jwt/private.key
+
+# Replica specifications for core services
+replicas:
+  - name: tald-fleet-manager
+    count: 3
+  - name: tald-game-service
+    count: 5
+  - name: tald-lidar-processor
+    count: 3
+
+# Image specifications with versioning
+images:
+  - name: tald-unia/fleet-manager
+    newTag: "1.0.0"
+  - name: tald-unia/game-service
+    newTag: "1.0.0"
+  - name: tald-unia/lidar-processor
+    newTag: "1.0.0"
+
+# Strategic merge patches for customizing deployments
+patchesStrategicMerge:
+  - patches/resource-limits.yml
+  - patches/security-context.yml
+  - patches/pod-anti-affinity.yml
+  - patches/node-selector.yml
+  - patches/tolerations.yml
