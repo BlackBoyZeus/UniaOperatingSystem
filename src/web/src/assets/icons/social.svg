@@ -1,0 +1,85 @@
+<svg 
+  viewBox="0 0 24 24"
+  fill="currentColor"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-label="social"
+  shape-rendering="geometricPrecision"
+  text-rendering="optimizeLegibility"
+  will-change="transform"
+  transform-origin="center"
+  style="transform: translate3d(0,0,0); contain: paint; color-interpolation: linearRGB; image-rendering: optimizeQuality"
+>
+  <title>Social Features Icon</title>
+  <desc>Icon representing social and multiplayer features</desc>
+  
+  <!-- Main group for GPU acceleration -->
+  <g transform-origin="center">
+    <!-- Central player node -->
+    <circle 
+      cx="12" 
+      cy="12" 
+      r="3.5"
+      stroke-width="1.5"
+      stroke="currentColor"
+      fill="none"
+    />
+    
+    <!-- Connected player nodes -->
+    <circle 
+      cx="5" 
+      cy="19" 
+      r="2.5"
+      stroke-width="1.5"
+      stroke="currentColor"
+      fill="none"
+    />
+    
+    <circle 
+      cx="19" 
+      cy="19" 
+      r="2.5"
+      stroke-width="1.5"
+      stroke="currentColor"
+      fill="none"
+    />
+    
+    <circle 
+      cx="12" 
+      cy="5" 
+      r="2.5"
+      stroke-width="1.5"
+      stroke="currentColor"
+      fill="none"
+    />
+    
+    <!-- Connection lines -->
+    <path
+      d="M12 15.5L5 17.5M12 15.5L19 17.5M12 8.5L12 15.5"
+      stroke="currentColor"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      fill="none"
+    />
+    
+    <!-- Fleet indicator arc -->
+    <path
+      d="M4 12C4 7.58172 7.58172 4 12 4"
+      stroke="currentColor"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      fill="none"
+    />
+    
+    <!-- Proximity indicator -->
+    <path
+      d="M20 12C20 7.58172 16.4183 4 12 4"
+      stroke="currentColor"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      fill="none"
+      opacity="0.5"
+    />
+  </g>
+</svg>
