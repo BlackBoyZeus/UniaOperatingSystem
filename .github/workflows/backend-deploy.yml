@@ -1,0 +1,156 @@
+name: Backend Deployment
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/backend/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        description: 'Deployment Environment'
+        options:
+          - staging
+          - production
+
+permissions:
+  id-token: write
+  contents: read
+  packages: write
+  deployments: write
+
+concurrency:
+  group: backend-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+  ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
+  ECS_SERVICE: ${{ secrets.ECS_SERVICE }}
+  NODE_ENV: production
+
+jobs:
+  deploy:
+    name: Deploy Backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.service_url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          lfs: true
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: src/backend/package-lock.json
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-duration-seconds: 3600
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v1
+        id: ecr-login
+
+      - name: Build and test application
+        working-directory: src/backend
+        run: |
+          npm ci
+          npm run lint
+          npm run test
+          npm run build
+
+      - name: Scan for vulnerabilities
+        uses: snyk/actions/docker@v1
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          args: --severity-threshold=high --file=src/backend/Dockerfile
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: src/backend
+          file: src/backend/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_ENV=production
+            VERSION=${{ github.sha }}
+
+      - name: Deploy to ECS
+        id: deploy
+        uses: aws-actions/ecs-deploy-action@v1
+        with:
+          cluster: ${{ env.ECS_CLUSTER }}
+          service: ${{ env.ECS_SERVICE }}
+          wait-for-service-stability: true
+          force-new-deployment: true
+          codedeploy-appspec: |
+            version: 0.0
+            Resources:
+              - TargetService:
+                  Type: AWS::ECS::Service
+                  Properties:
+                    TaskDefinition: ${{ secrets.TASK_DEFINITION_ARN }}
+                    LoadBalancerInfo:
+                      ContainerName: "tald-backend"
+                      ContainerPort: 3000
+            Hooks:
+              - BeforeInstall: "LambdaFunctionToValidateBeforeInstall"
+              - AfterInstall: "LambdaFunctionToValidateAfterInstall"
+              - AfterAllowTestTraffic: "LambdaFunctionToValidateTestTraffic"
+              - BeforeAllowTraffic: "LambdaFunctionToValidateBeforeTraffic"
+              - AfterAllowTraffic: "LambdaFunctionToValidateAfterTraffic"
+
+      - name: Configure monitoring
+        run: |
+          aws cloudwatch put-metric-alarm \
+            --alarm-name "${ECS_SERVICE}-cpu-utilization" \
+            --alarm-description "CPU utilization for ${ECS_SERVICE}" \
+            --metric-name CPUUtilization \
+            --namespace AWS/ECS \
+            --statistic Average \
+            --period 300 \
+            --threshold 80 \
+            --comparison-operator GreaterThanThreshold \
+            --dimensions Name=ClusterName,Value=${ECS_CLUSTER} Name=ServiceName,Value=${ECS_SERVICE} \
+            --evaluation-periods 2 \
+            --alarm-actions ${ALARM_ARN} \
+            --ok-actions ${OK_ARN}
+        env:
+          ALARM_ARN: ${{ secrets.ALARM_SNS_ARN }}
+          OK_ARN: ${{ secrets.OK_SNS_ARN }}
+
+      - name: Verify deployment health
+        run: |
+          endpoint="${{ steps.deploy.outputs.service_url }}/health"
+          for i in {1..30}; do
+            response=$(curl -s -o /dev/null -w "%{http_code}" $endpoint)
+            if [ $response -eq 200 ]; then
+              echo "Service is healthy"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Service failed health check"
+          exit 1
