@@ -1,0 +1,166 @@
+/* TALD UNIA Layout System
+ * Core layout styles implementing responsive grid system with 8px base unit,
+ * GPU-accelerated animations and gaming-optimized performance features
+ */
+
+@import '../styles/variables.css';
+
+/* Base Layout Container */
+.app-layout {
+  display: grid;
+  grid-template-areas: 
+    'header header'
+    'sidebar main';
+  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-rows: var(--header-height) 1fr;
+  min-height: 100vh;
+  width: 100%;
+  contain: layout paint;
+  overscroll-behavior: none;
+  touch-action: none;
+  transform: translateZ(0);
+}
+
+/* Main Content Area */
+.main-content {
+  grid-area: main;
+  padding: calc(var(--spacing-unit) + env(safe-area-inset-top))
+           calc(var(--spacing-unit) + env(safe-area-inset-right))
+           calc(var(--spacing-unit) + env(safe-area-inset-bottom))
+           calc(var(--spacing-unit) + env(safe-area-inset-left));
+  overflow-y: auto;
+  height: calc(100vh - var(--header-height));
+  contain: paint;
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Fixed Sidebar */
+.sidebar {
+  grid-area: sidebar;
+  background-color: var(--surface-color);
+  border-right: var(--border-width) solid var(--border-color);
+  height: calc(100vh - var(--header-height));
+  position: fixed;
+  width: var(--sidebar-width);
+  top: var(--header-height);
+  left: 0;
+  z-index: var(--z-index-header);
+  transform: translateZ(0);
+  will-change: transform;
+  contain: layout paint;
+  backface-visibility: hidden;
+}
+
+/* Fixed Header */
+.header {
+  grid-area: header;
+  background-color: var(--surface-color);
+  border-bottom: var(--border-width) solid var(--border-color);
+  height: var(--header-height);
+  padding: 0 
+           calc(var(--spacing-unit) + env(safe-area-inset-right))
+           0
+           calc(var(--spacing-unit) + env(safe-area-inset-left));
+  position: fixed;
+  width: 100%;
+  top: env(safe-area-inset-top);
+  z-index: var(--z-index-header);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  contain: layout paint;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Game View Container */
+.game-view {
+  aspect-ratio: 16/9;
+  width: 100%;
+  max-height: calc(100vh - var(--header-height) - var(--spacing-unit) * 2);
+  background-color: var(--background-color);
+  position: relative;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  contain: layout paint;
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  image-rendering: pixelated;
+}
+
+/* Fleet Layout Grid */
+.fleet-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--spacing-unit);
+  padding: var(--spacing-unit);
+  max-width: var(--max-width-content);
+  margin: 0 auto;
+  contain: layout paint;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Mobile Responsive Layout */
+@media (max-width: 768px) {
+  .app-layout {
+    grid-template-areas: 
+      'header'
+      'main';
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform var(--animation-duration-normal) var(--animation-easing);
+    will-change: transform;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+}
+
+/* Tablet Responsive Layout */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .fleet-layout {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Desktop Responsive Layout */
+@media (min-width: 1025px) {
+  .fleet-layout {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Ultrawide Support */
+@media (min-width: 1921px) {
+  .game-view {
+    aspect-ratio: 21/9;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .sidebar {
+    transition: none;
+  }
+}
+
+/* Safe Area Support for Notched Devices */
+@supports (padding: max(0px)) {
+  .header {
+    padding-left: max(var(--spacing-unit), env(safe-area-inset-left));
+    padding-right: max(var(--spacing-unit), env(safe-area-inset-right));
+  }
+
+  .main-content {
+    padding-bottom: max(var(--spacing-unit), env(safe-area-inset-bottom));
+  }
+}
