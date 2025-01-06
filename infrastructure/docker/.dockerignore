@@ -1,0 +1,90 @@
+node_modules/
+npm-debug.log
+.git/
+.env*
+*.test.ts
+tests/
+coverage/
+cypress/
+.vscode/
+.idea/
+
+# Build artifacts and output directories
+dist/
+build/
+
+# Documentation files
+*.md
+docs/
+
+# System and IDE files
+.DS_Store
+.vscode/
+.idea/
+
+# Docker-specific files
+Dockerfile*
+.dockerignore
+docker-compose*.yml
+
+# Logs and debug files
+*.log
+logs/
+
+# Temporary and cache files
+*.tmp
+*.cache
+.npm/
+.yarn/
+
+# Test coverage and reports
+coverage/
+reports/
+test-results/
+junit.xml
+
+# Development config files
+.eslintrc*
+.prettierrc*
+.babelrc*
+tsconfig.json
+jest.config.js
+
+# Local development files
+*.local
+.env.local
+.env.development
+.env.test
+
+# Package manager files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build tools and dependencies
+node_modules/
+bower_components/
+vendor/
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+.svn/
+.hg/
+
+# Editor and IDE files
+*.swp
+*.swo
+*.swn
+*.bak
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
