@@ -1,0 +1,203 @@
+/* TALD UNIA Animation System
+ * GPU-accelerated animations and transitions with power-aware scaling
+ * Version: 1.0.0
+ */
+
+@import url('../styles/variables.css');
+
+/* Core Keyframe Animations */
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes slideIn {
+  0% {
+    transform: translate3d(-100%, 0, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes slideOut {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(100%, 0, 0);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale3d(1, 1, 1);
+  }
+  50% {
+    transform: scale3d(1.05, 1.05, 1.05);
+  }
+  100% {
+    transform: scale3d(1, 1, 1);
+  }
+}
+
+@keyframes rotate3d {
+  0% {
+    transform: rotate3d(0, 1, 0, 0deg);
+  }
+  100% {
+    transform: rotate3d(0, 1, 0, 360deg);
+  }
+}
+
+/* Game-Specific Animations */
+@keyframes scanEffect {
+  0% {
+    background-position: -100% 0;
+    opacity: 0.5;
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    background-position: 200% 0;
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes meshReveal {
+  0% {
+    clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes pointCloudFade {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale3d(0.95, 0.95, 0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
+  }
+}
+
+/* Utility Animation Classes */
+.fade-in {
+  animation: fadeIn var(--animation-duration-normal) var(--animation-easing) forwards;
+  will-change: opacity, transform;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+.fade-out {
+  animation: fadeOut var(--animation-duration-normal) var(--animation-easing) forwards;
+  will-change: opacity, transform;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+.slide-in {
+  animation: slideIn var(--animation-duration-normal) var(--animation-easing) forwards;
+  will-change: transform;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+.slide-out {
+  animation: slideOut var(--animation-duration-normal) var(--animation-easing) forwards;
+  will-change: transform;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+/* Game-Specific Animation Classes */
+.lidar-scan {
+  animation: scanEffect 2s var(--animation-easing) infinite;
+  background: linear-gradient(90deg, transparent, var(--lidar-scan-color), transparent);
+  will-change: background-position, opacity, transform;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+.mesh-reveal {
+  animation: meshReveal var(--animation-duration-slow) var(--animation-easing) forwards;
+  will-change: clip-path, opacity, transform;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+.point-cloud {
+  animation: pointCloudFade var(--animation-duration-fast) var(--animation-easing) forwards;
+  will-change: opacity, transform;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+.fleet-pulse {
+  animation: pulse 2s var(--animation-easing) infinite;
+  will-change: transform;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+/* Reduced Motion & Power Save Mode */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Power Save Mode with Dark Theme */
+@media (prefers-reduced-motion: reduce) and (prefers-color-scheme: dark) {
+  .lidar-scan {
+    animation: none;
+    opacity: 0.3;
+  }
+
+  .fleet-pulse {
+    animation: none;
+  }
+
+  .point-cloud {
+    animation: none;
+    opacity: 0.5;
+  }
+}
+
+/* High Performance Mode */
+@media (prefers-reduced-motion: no-preference) {
+  .lidar-scan {
+    animation-duration: 1.5s;
+  }
+
+  .point-cloud {
+    animation-duration: 0.2s;
+  }
+}
