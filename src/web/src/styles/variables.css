@@ -1,0 +1,93 @@
+/* TALD UNIA Design System
+ * Core CSS variables implementing HDR-aware color system, gaming typography,
+ * dynamic spacing and power-aware animations
+ */
+
+:root {
+  /* Color System - Base Colors (P3 Color Space) */
+  --color-primary: color(display-p3 0.486 0.302 1);
+  --color-secondary: color(display-p3 0 0.898 1);
+  --color-accent: color(display-p3 1 0.5 0);
+  --color-background: color(display-p3 0.1 0.1 0.15);
+  --color-surface: color(display-p3 0.15 0.15 0.2);
+
+  /* HDR Color Variants */
+  --color-primary-hdr: color(display-p3 0.6 0.4 1);
+  --color-secondary-hdr: color(display-p3 0 1 1);
+  --color-accent-hdr: color(display-p3 1 0.6 0);
+
+  /* Fallback Colors (sRGB) */
+  --color-primary-srgb: rgb(124, 77, 255);
+  --color-secondary-srgb: rgb(0, 229, 255);
+  --color-accent-srgb: rgb(255, 128, 0);
+
+  /* Typography - Custom Gaming Font */
+  --font-family-gaming: 'TALD Gaming', system-ui, -apple-system, sans-serif;
+  --font-family-system: system-ui, -apple-system, sans-serif;
+
+  /* Font Weights */
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+
+  /* Font Features */
+  --font-feature-gaming: 'kern' 1, 'liga' 1, 'calt' 1, 'dlig' 1;
+  --font-bitmap-smoothing: never;
+
+  /* Spacing System */
+  --spacing-unit: 8px;
+  --spacing-safe-area: calc(var(--spacing-unit) + env(safe-area-inset-bottom, 0px));
+
+  /* Layout Dimensions */
+  --layout-max-width: 1440px;
+  --layout-game-width: calc(100vw - var(--spacing-unit) * 4);
+  --layout-game-height: calc(100vh - var(--spacing-safe-area));
+
+  /* Animation Performance */
+  --animation-gpu: translateZ(0);
+  --animation-will-change: transform, opacity;
+  --animation-frame-budget: 16.667ms;
+
+  /* Animation Durations */
+  --animation-duration-power-save: 500ms;
+  --animation-duration-normal: 300ms;
+  --animation-duration-performance: 150ms;
+  --animation-duration: var(--animation-duration-normal);
+
+  /* Game UI - LiDAR Visualization */
+  --lidar-point-size: 2px;
+  --lidar-point-density: 1.2;
+  --lidar-scan-opacity: 0.8;
+  --lidar-mesh-width: 1px;
+
+  /* Visual Effects */
+  --effect-bloom: blur(8px) brightness(1.2);
+  --effect-glow: drop-shadow(0 0 8px var(--color-primary-hdr));
+  --effect-depth: translateZ(-100px);
+}
+
+/* HDR Display Support */
+@media (dynamic-range: high) {
+  :root {
+    --color-primary: var(--color-primary-hdr);
+    --color-secondary: var(--color-secondary-hdr);
+    --color-accent: var(--color-accent-hdr);
+  }
+}
+
+/* Power Save Mode */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --animation-duration: var(--animation-duration-power-save);
+    --animation-will-change: auto;
+  }
+}
+
+/* Fallback for browsers without P3 color support */
+@supports not (color: color(display-p3 0 0 0)) {
+  :root {
+    --color-primary: var(--color-primary-srgb);
+    --color-secondary: var(--color-secondary-srgb);
+    --color-accent: var(--color-accent-srgb);
+  }
+}
