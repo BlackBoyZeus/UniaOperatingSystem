@@ -1,0 +1,49 @@
+# Kubernetes Service configuration for TALD UNIA analytics services
+# Version: v1
+# Dependencies:
+# - kubernetes: 1.24+
+
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: tald-analytics
+  namespace: tald-unia
+  labels:
+    app: tald-analytics
+    component: metrics
+    part-of: tald-unia
+  annotations:
+    # Enable Prometheus scraping
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
+    # Ensure service is only accessible internally
+    service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+
+spec:
+  # Select pods with matching labels from analytics deployment
+  selector:
+    app: tald-analytics
+
+  # Define service ports
+  ports:
+    # Prometheus metrics endpoint
+    - name: metrics
+      port: 9090
+      targetPort: 9090
+      protocol: TCP
+    
+    # HTTP API endpoint for analytics data
+    - name: http
+      port: 3001
+      targetPort: 3001
+      protocol: TCP
+
+  # Use ClusterIP for internal service access only
+  type: ClusterIP
+
+  # Don't maintain session affinity
+  sessionAffinity: None
+
+  # Only publish endpoints for ready pods
+  publishNotReadyAddresses: false
