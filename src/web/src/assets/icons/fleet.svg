@@ -1,0 +1,30 @@
+<svg 
+  viewBox="0 0 24 24" 
+  fill="currentColor" 
+  xmlns="http://www.w3.org/2000/svg" 
+  width="100%" 
+  height="100%" 
+  preserveAspectRatio="xMidYMid meet"
+  role="img"
+  aria-hidden="true"
+  focusable="false"
+  aria-label="Fleet icon"
+>
+  <title>Fleet</title>
+  <desc>Icon representing fleet management functionality</desc>
+  
+  <!-- Main fleet group with optimized paths for GPU acceleration -->
+  <g>
+    <!-- Central device representing fleet leader -->
+    <path d="M12 7a2 2 0 100 4 2 2 0 000-4zm-4 9.24v-.79c0-1.35 2.68-2.02 4-2.02s4 .67 4 2.02v.79c0 .36-.22.76-.88.76H8.88c-.66 0-.88-.4-.88-.76z" />
+    
+    <!-- Connected fleet members (left) -->
+    <path d="M6.5 10a1.5 1.5 0 100 3 1.5 1.5 0 000-3zm-3 6.93v-.59c0-1.01 2.01-1.52 3-1.52.11 0 .23.01.34.02C6.31 15.52 6 16.23 6 17v.93H3.5z" />
+    
+    <!-- Connected fleet members (right) -->
+    <path d="M17.5 10a1.5 1.5 0 100 3 1.5 1.5 0 000-3zm3 6.93v-.59c0-1.01-2.01-1.52-3-1.52-.11 0-.23.01-.34.02.53.68.84 1.39.84 2.16v.93h2.5z" />
+    
+    <!-- Network connection lines -->
+    <path d="M12 6c.55 0 1-.45 1-1V3c0-.55-.45-1-1-1s-1 .45-1 1v2c0 .55.45 1 1 1zm7.6 2.92c.39-.39.39-1.02 0-1.41l-1.41-1.41c-.39-.39-1.02-.39-1.41 0-.39.39-.39 1.02 0 1.41l1.41 1.41c.39.38 1.03.38 1.41 0zM4.4 8.92c-.39-.39-.39-1.02 0-1.41.39-.39 1.02-.39 1.41 0l1.41 1.41c.39.39.39 1.02 0 1.41-.39.39-1.02.39-1.41 0L4.4 8.92z" opacity=".6" />
+  </g>
+</svg>
