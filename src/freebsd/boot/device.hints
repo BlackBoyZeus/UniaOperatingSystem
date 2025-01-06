@@ -1,0 +1,38 @@
+# TALD UNIA Gaming Platform - Device Hints Configuration
+# Version: 1.0
+# Boot Stage: Early
+# Load Priority: Critical
+
+# =============================================================================
+# TPM 2.0 Configuration
+# Hardware security module settings for secure boot and key storage
+# =============================================================================
+hint.tpm.0.at="isa"                  # TPM device on ISA bus
+hint.tpm.0.irq="10"                  # Interrupt request line
+hint.tpm.0.version="2.0"             # TPM version requirement
+hint.tpm.0.enabled="1"               # Enable TPM module
+
+# =============================================================================
+# LiDAR Scanner Configuration
+# Environmental scanning and point cloud generation settings
+# =============================================================================
+hint.lidar.0.at="pci0"              # LiDAR device on PCI bus
+hint.lidar.0.freq="30"              # 30Hz continuous scanning frequency
+hint.lidar.0.resolution="0.01"       # 0.01cm scanning resolution
+hint.lidar.0.range="5"              # 5-meter effective range
+
+# =============================================================================
+# GPU Configuration
+# Vulkan rendering and shader compilation settings
+# =============================================================================
+hint.gpu.0.at="pci0"                # GPU device on PCI bus
+hint.gpu.0.vulkan_version="1.3"     # Vulkan API version requirement
+hint.gpu.0.shader_compiler="enabled" # Enable shader compilation
+
+# =============================================================================
+# Mesh Networking Configuration
+# Fleet-based multiplayer networking settings
+# =============================================================================
+hint.mesh.0.at="pci0"               # Mesh networking device on PCI bus
+hint.mesh.0.max_devices="32"        # Maximum fleet size support
+hint.mesh.0.latency_target="50"     # Target network latency in ms
