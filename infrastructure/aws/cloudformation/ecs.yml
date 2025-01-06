@@ -1,0 +1,234 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TALD UNIA Platform - ECS Infrastructure
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: 
+      - dev
+      - staging
+      - prod
+    Description: Deployment environment
+
+Resources:
+  # ECS Cluster Definition
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub tald-unia-cluster-${Environment}
+      CapacityProviders:
+        - FARGATE
+        - FARGATE_SPOT
+      DefaultCapacityProviderStrategy:
+        - CapacityProvider: FARGATE
+          Weight: 1
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: TALD-UNIA
+
+  # Fleet Service Log Group
+  FleetServiceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/tald-unia/fleet-service-${Environment}
+      RetentionInDays: 14
+
+  # Fleet Service Task Definition
+  FleetTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub tald-unia-fleet-${Environment}
+      RequiresCompatibilities:
+        - FARGATE
+      NetworkMode: awsvpc
+      Cpu: '2048'  # 2 vCPU
+      Memory: '4096'  # 4GB
+      ExecutionRoleArn: !GetAtt SecurityStack.ServiceRoleArn
+      TaskRoleArn: !GetAtt SecurityStack.ServiceRoleArn
+      ContainerDefinitions:
+        - Name: fleet-service
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/tald-unia/fleet-service:latest
+          Essential: true
+          PortMappings:
+            - ContainerPort: 8080
+              Protocol: tcp
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref FleetServiceLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: fleet
+          Environment:
+            - Name: ENVIRONMENT
+              Value: !Ref Environment
+          HealthCheck:
+            Command: 
+              - CMD-SHELL
+              - curl -f http://localhost:8080/health || exit 1
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+
+  # Fleet Service Definition
+  FleetService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: !Sub tald-unia-fleet-${Environment}
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref FleetTaskDefinition
+      DesiredCount: 3
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups: 
+            - !GetAtt SecurityStack.ApplicationSecurityGroupId
+          Subnets: !GetAtt NetworkingStack.PrivateSubnets
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+      HealthCheckGracePeriodSeconds: 60
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Fleet Service Auto Scaling
+  FleetServiceAutoScaling:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties:
+      MaxCapacity: 10
+      MinCapacity: 2
+      ResourceId: !Sub service/${ECSCluster}/${FleetService.Name}
+      RoleARN: !GetAtt SecurityStack.ServiceRoleArn
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+
+  FleetServiceScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub ${FleetService.Name}-cpu-scaling
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref FleetServiceAutoScaling
+      TargetTrackingScalingPolicyConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageCPUUtilization
+        TargetValue: 70.0
+        ScaleInCooldown: 300
+        ScaleOutCooldown: 60
+
+  # Game Service Log Group
+  GameServiceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/tald-unia/game-service-${Environment}
+      RetentionInDays: 14
+
+  # Game Service Task Definition
+  GameTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub tald-unia-game-${Environment}
+      RequiresCompatibilities:
+        - FARGATE
+      NetworkMode: awsvpc
+      Cpu: '4096'  # 4 vCPU
+      Memory: '8192'  # 8GB
+      ExecutionRoleArn: !GetAtt SecurityStack.ServiceRoleArn
+      TaskRoleArn: !GetAtt SecurityStack.ServiceRoleArn
+      ContainerDefinitions:
+        - Name: game-service
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/tald-unia/game-service:latest
+          Essential: true
+          PortMappings:
+            - ContainerPort: 8081
+              Protocol: tcp
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref GameServiceLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: game
+          Environment:
+            - Name: ENVIRONMENT
+              Value: !Ref Environment
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - curl -f http://localhost:8081/health || exit 1
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+
+  # Game Service Definition
+  GameService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: !Sub tald-unia-game-${Environment}
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref GameTaskDefinition
+      DesiredCount: 5
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - !GetAtt SecurityStack.ApplicationSecurityGroupId
+          Subnets: !GetAtt NetworkingStack.PrivateSubnets
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+      HealthCheckGracePeriodSeconds: 60
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Game Service Auto Scaling
+  GameServiceAutoScaling:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties:
+      MaxCapacity: 15
+      MinCapacity: 3
+      ResourceId: !Sub service/${ECSCluster}/${GameService.Name}
+      RoleARN: !GetAtt SecurityStack.ServiceRoleArn
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+
+  GameServiceScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub ${GameService.Name}-cpu-scaling
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref GameServiceAutoScaling
+      TargetTrackingScalingPolicyConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageCPUUtilization
+        TargetValue: 70.0
+        ScaleInCooldown: 300
+        ScaleOutCooldown: 60
+
+Outputs:
+  ECSClusterArn:
+    Description: ECS Cluster ARN
+    Value: !GetAtt ECSCluster.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-cluster-arn
+
+  FleetServiceName:
+    Description: Fleet Service Name
+    Value: !GetAtt FleetService.Name
+    Export:
+      Name: !Sub ${AWS::StackName}-fleet-service-name
+
+  GameServiceName:
+    Description: Game Service Name
+    Value: !GetAtt GameService.Name
+    Export:
+      Name: !Sub ${AWS::StackName}-game-service-name
