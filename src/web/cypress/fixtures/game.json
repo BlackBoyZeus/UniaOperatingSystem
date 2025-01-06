@@ -1,0 +1,105 @@
+{
+  "gameId": "test-game-1234",
+  "sessionId": "test-session-5678",
+  "state": "RUNNING",
+  "environment": {
+    "version": "1.0.0",
+    "timestamp": 1697123456789,
+    "meshData": "mock-mesh-buffer",
+    "pointCloud": {
+      "points": [
+        {"x": 0.0, "y": 0.0, "z": 0.0},
+        {"x": 1.5, "y": 2.3, "z": 0.5},
+        {"x": 2.1, "y": 1.7, "z": 1.2},
+        {"x": 3.2, "y": 0.8, "z": 2.5},
+        {"x": 4.1, "y": 1.9, "z": 3.1}
+      ],
+      "density": 1200000,
+      "resolution": 0.01,
+      "range": 4.8,
+      "rawData": "mock-point-cloud-buffer"
+    },
+    "classifiedObjects": [
+      {
+        "id": "obj-1",
+        "type": "static",
+        "position": {"x": 0.0, "y": 0.0, "z": 0.0},
+        "confidence": 0.95,
+        "boundingBox": {
+          "min": {"x": -0.5, "y": -0.5, "z": -0.5},
+          "max": {"x": 0.5, "y": 0.5, "z": 0.5}
+        }
+      },
+      {
+        "id": "obj-2",
+        "type": "dynamic",
+        "position": {"x": 1.5, "y": 1.2, "z": 0.8},
+        "velocity": {"x": 0.1, "y": 0.0, "z": 0.0},
+        "confidence": 0.87,
+        "boundingBox": {
+          "min": {"x": 1.2, "y": 0.9, "z": 0.5},
+          "max": {"x": 1.8, "y": 1.5, "z": 1.1}
+        }
+      }
+    ]
+  },
+  "renderConfig": {
+    "resolution": {
+      "width": 1920,
+      "height": 1080
+    },
+    "quality": "HIGH",
+    "lidarOverlayEnabled": true,
+    "vsyncEnabled": true,
+    "antiAliasing": 4
+  },
+  "performance": {
+    "fps": 60,
+    "frameTime": 16.2,
+    "lidarLatency": 45,
+    "networkLatency": 48,
+    "memoryUsage": 3.8
+  },
+  "fleet": {
+    "fleetId": "test-fleet-789",
+    "size": 3,
+    "maxSize": 32,
+    "lastSync": 1697123456789,
+    "members": [
+      {
+        "deviceId": "device-1",
+        "role": "leader",
+        "latency": 45,
+        "status": "active",
+        "performance": {
+          "fps": 60,
+          "lidarLatency": 45,
+          "networkLatency": 45
+        }
+      },
+      {
+        "deviceId": "device-2",
+        "role": "member",
+        "latency": 48,
+        "status": "active",
+        "performance": {
+          "fps": 58,
+          "lidarLatency": 47,
+          "networkLatency": 48
+        }
+      },
+      {
+        "deviceId": "device-3",
+        "role": "member",
+        "latency": 52,
+        "status": "active",
+        "performance": {
+          "fps": 59,
+          "lidarLatency": 46,
+          "networkLatency": 52
+        }
+      }
+    ]
+  },
+  "timestamp": 1697123456789
+}
