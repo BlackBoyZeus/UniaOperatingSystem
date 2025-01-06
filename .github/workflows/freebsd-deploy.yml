@@ -1,0 +1,190 @@
+name: FreeBSD Deploy
+
+on:
+  workflow_run:
+    workflows: ['FreeBSD CI']
+    types: [completed]
+    branches: [main]
+
+env:
+  FREEBSD_VERSION: '13.0-RELEASE'
+  DEPLOY_ENV: 'production'
+  AWS_REGION: 'us-west-2'
+  DEPLOY_TIMEOUT: '1800'
+  HARDWARE_CHECK_TIMEOUT: '300'
+  MONITORING_ENDPOINT: 'https://api.datadog.com/v1/metrics'
+  EMERGENCY_CONTACT: 'oncall@taldunia.com'
+
+jobs:
+  setup-deploy-env:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-deploy
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Setup hardware security module
+        run: |
+          aws secretsmanager get-secret-value \
+            --secret-id tald-hsm-config \
+            --query SecretString \
+            --output text > hsm-config.json
+
+      - name: Initialize monitoring systems
+        uses: datadog/monitor-action@v1
+        with:
+          api-key: ${{ secrets.DATADOG_API_KEY }}
+          app-key: ${{ secrets.DATADOG_APP_KEY }}
+          monitor-name: 'TALD UNIA Deployment'
+          
+      - name: Validate security prerequisites
+        run: |
+          echo "Validating TPM configuration..."
+          tpm2_startup -c
+          tpm2_selftest --full
+          
+      - name: Configure emergency notification system
+        run: |
+          aws sns create-topic --name tald-deploy-alerts
+          aws sns subscribe \
+            --topic-arn ${{ secrets.SNS_TOPIC_ARN }} \
+            --protocol email \
+            --notification-endpoint ${{ env.EMERGENCY_CONTACT }}
+
+  validate-hardware:
+    needs: setup-deploy-env
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: Download hardware validation artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: hardware-validation
+          
+      - name: Check LiDAR compatibility
+        run: |
+          ./validate_hardware.sh --component lidar \
+            --min-resolution 0.01 \
+            --max-range 5000 \
+            --scan-freq 30
+            
+      - name: Validate GPU requirements
+        run: |
+          ./validate_hardware.sh --component gpu \
+            --vulkan-version 1.3 \
+            --min-memory 4G
+            
+      - name: Test network capabilities
+        run: |
+          ./validate_hardware.sh --component network \
+            --max-latency 50 \
+            --fleet-size 32
+            
+      - name: Generate hardware report
+        run: |
+          ./generate_validation_report.sh > hardware-report.json
+          
+  deploy-parallel:
+    needs: validate-hardware
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: [kernel, drivers, libraries]
+        
+    steps:
+      - name: Download deployment artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: build-artifacts
+          
+      - name: Verify signatures and checksums
+        run: |
+          sha256sum -c checksums.txt
+          gpg --verify signatures.asc
+          
+      - name: Deploy component
+        run: |
+          ./src/freebsd/scripts/deploy.sh \
+            --component ${{ matrix.component }} \
+            --target production \
+            --timeout ${{ env.DEPLOY_TIMEOUT }}
+            
+      - name: Run component tests
+        run: |
+          ./src/freebsd/scripts/test.sh \
+            --component ${{ matrix.component }} \
+            --suite post-deploy
+            
+      - name: Update deployment status
+        run: |
+          curl -X POST ${{ env.MONITORING_ENDPOINT }} \
+            -H "DD-API-KEY: ${{ secrets.DATADOG_API_KEY }}" \
+            -d "deployment.status.${{ matrix.component }}=success"
+
+  verify-deployment:
+    needs: deploy-parallel
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Verify system integrity with TPM
+        run: |
+          tpm2_pcrread sha256:0,1,2,3
+          tpm2_quote -Q --key-context key.context
+          
+      - name: Run performance benchmarks
+        run: |
+          ./benchmark.sh \
+            --scan-latency \
+            --network-latency \
+            --framerate \
+            --fleet-size
+            
+      - name: Test LiDAR processing pipeline
+        run: |
+          ./test_lidar.sh \
+            --resolution 0.01 \
+            --range 5000 \
+            --frequency 30
+            
+      - name: Validate mesh networking
+        run: |
+          ./test_mesh.sh \
+            --fleet-size 32 \
+            --max-latency 50
+            
+      - name: Check game engine components
+        run: |
+          ./test_game_engine.sh \
+            --vulkan \
+            --physics \
+            --rendering
+            
+      - name: Generate detailed health report
+        run: |
+          ./generate_health_report.sh > health-report.json
+          
+      - name: Update monitoring metrics
+        run: |
+          curl -X POST ${{ env.MONITORING_ENDPOINT }} \
+            -H "DD-API-KEY: ${{ secrets.DATADOG_API_KEY }}" \
+            -d @health-report.json
+
+      - name: Upload deployment artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: deployment-status
+          path: |
+            hardware-report.json
+            health-report.json
+            benchmark-results.json
