@@ -1,0 +1,88 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+cargo.lock
+target/
+vendor/
+
+# Build outputs
+dist/
+build/
+out/
+*.o
+*.ko
+*.so
+*.a
+*.spv
+*.spirv
+*.ptx
+*.cubin
+*.fatbin
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+.aws/
+.tpm/
+.hardware-id
+.fleet-keys/
+
+# IDE and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+*.sublime-*
+*.code-workspace
+
+# Logs and debugging
+logs/
+*.log
+debug/
+core.*
+lidar-debug/
+fleet-logs/
+game-traces/
+
+# Testing and coverage
+coverage/
+.nyc_output/
+test-results/
+__snapshots__/
+lidar-test-data/
+fleet-simulations/
+
+# FreeBSD specific
+*.core
+*.symbols
+*.ko.debug
+*.ko.full
+*.kld
+*.kmod
+tald-os-debug/
+kernel-modules/
+
+# Infrastructure
+*.tfstate
+*.tfstate.backup
+.terraform/
+kubeconfig
+*.kubeconfig
+fleet-config/
+edge-deploy/
+
+# LiDAR and Game Engine
+point-cloud-cache/
+mesh-data/
+*.vulkan-cache
+*.shader-cache
+*.lidar-cal
+*.fleet-state
