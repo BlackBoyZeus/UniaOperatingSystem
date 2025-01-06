@@ -1,0 +1,135 @@
+# Kubernetes RBAC configuration for TALD UNIA gaming platform
+# API Version: kubernetes v1.26
+# Purpose: Define role-based access control policies and security controls
+
+---
+# Service Account Definitions
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tald-backend-sa
+  namespace: tald-unia
+  annotations:
+    kubernetes.io/enforce-mountable-secrets: "true"
+    kubernetes.io/require-secret-encryption: "true"
+    security.tald.io/audit-level: "high"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tald-monitoring-sa
+  namespace: tald-unia
+  annotations:
+    kubernetes.io/enforce-mountable-secrets: "true"
+    kubernetes.io/require-secret-encryption: "true"
+    security.tald.io/audit-level: "high"
+    monitoring.tald.io/metrics-access: "enabled"
+
+---
+# Cluster Role Definitions
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tald-backend-role
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "configmaps", "secrets"]
+    verbs: ["get", "list", "watch"]
+    resourceNames: ["tald-backend-*"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets"]
+    verbs: ["get", "list", "watch"]
+    resourceNames: ["tald-backend-*"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tald-monitoring-role
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "endpoints", "nodes", "nodes/metrics"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods", "nodes"]
+    verbs: ["get", "list", "watch"]
+
+---
+# Role Binding Definitions
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tald-backend-binding
+  namespace: tald-unia
+subjects:
+  - kind: ServiceAccount
+    name: tald-backend-sa
+    namespace: tald-unia
+roleRef:
+  kind: ClusterRole
+  name: tald-backend-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tald-monitoring-binding
+  namespace: tald-unia
+subjects:
+  - kind: ServiceAccount
+    name: tald-monitoring-sa
+    namespace: tald-unia
+roleRef:
+  kind: ClusterRole
+  name: tald-monitoring-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Pod Security Policy
+apiVersion: v1
+kind: SecurityContext
+metadata:
+  name: tald-security-context
+  namespace: tald-unia
+spec:
+  seccompProfile:
+    type: RuntimeDefault
+  seLinuxOptions:
+    type: RuntimeDefault
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 3000
+  fsGroup: 2000
+  supplementalGroups: [3000]
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+
+---
+# Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tald-default-deny
+  namespace: tald-unia
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: tald-unia
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
