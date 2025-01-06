@@ -1,0 +1,142 @@
+# Prometheus Alert Rules Configuration for TALD UNIA Platform
+# Version: 2.45.0
+
+groups:
+  # Hardware Performance Monitoring
+  - name: hardware_alerts
+    rules:
+    - alert: HighCPUUsage
+      expr: device:cpu_usage:avg_5m > 70
+      for: 5m
+      labels:
+        severity: warning
+        component: hardware
+      annotations:
+        summary: High CPU usage detected
+        description: CPU usage above 70% threshold for 5 minutes
+        runbook_url: https://tald-unia.internal/runbooks/high-cpu
+
+    - alert: LowBatteryLife
+      expr: device:battery_drain_rate:avg_15m < 4
+      for: 5m
+      labels:
+        severity: warning
+        component: hardware
+      annotations:
+        summary: Battery life below target
+        description: Battery life projected below 4 hour requirement
+        runbook_url: https://tald-unia.internal/runbooks/battery-life
+
+  # LiDAR System Monitoring
+  - name: lidar_alerts
+    rules:
+    - alert: HighLiDARLatency
+      expr: device:lidar_processing_latency:avg_1m > 50
+      for: 1m
+      labels:
+        severity: critical
+        component: lidar
+      annotations:
+        summary: High LiDAR processing latency
+        description: LiDAR processing latency exceeding 50ms threshold
+        runbook_url: https://tald-unia.internal/runbooks/lidar-latency
+
+    - alert: LowPointCloudDensity
+      expr: device:point_cloud_density:avg_1m < 1000000
+      for: 1m
+      labels:
+        severity: warning
+        component: lidar
+      annotations:
+        summary: Low point cloud density
+        description: Point cloud generation below 1M points/second target
+        runbook_url: https://tald-unia.internal/runbooks/point-cloud-density
+
+  # Game Engine Performance
+  - name: game_engine_alerts
+    rules:
+    - alert: HighFrameTime
+      expr: device:frame_time:avg_10s > 16.6
+      for: 30s
+      labels:
+        severity: critical
+        component: game_engine
+      annotations:
+        summary: High frame time detected
+        description: Frame time exceeding 16.6ms target (60 FPS)
+        runbook_url: https://tald-unia.internal/runbooks/frame-time
+
+    - alert: ExcessiveMemoryUsage
+      expr: device:memory_usage:current > 3800000000
+      for: 2m
+      labels:
+        severity: warning
+        component: game_engine
+      annotations:
+        summary: High memory usage
+        description: Memory usage approaching 4GB limit
+        runbook_url: https://tald-unia.internal/runbooks/memory-usage
+
+  # Fleet Management & Networking
+  - name: fleet_alerts
+    rules:
+    - alert: HighP2PLatency
+      expr: fleet:p2p_latency:avg_5s > 50
+      for: 15s
+      labels:
+        severity: critical
+        component: networking
+      annotations:
+        summary: High P2P network latency
+        description: P2P communication latency exceeding 50ms threshold
+        runbook_url: https://tald-unia.internal/runbooks/p2p-latency
+
+    - alert: FleetTrustDegraded
+      expr: fleet:trust_score:current < 80
+      for: 1m
+      labels:
+        severity: critical
+        component: fleet
+      annotations:
+        summary: Fleet trust score degraded
+        description: Fleet trust score below 80% threshold
+        runbook_url: https://tald-unia.internal/runbooks/fleet-trust
+
+  # Security Monitoring
+  - name: security_alerts
+    rules:
+    - alert: ExcessiveAuthFailures
+      expr: rate(device:auth_failures:total[5m]) > 5
+      for: 1m
+      labels:
+        severity: critical
+        component: security
+      annotations:
+        summary: Excessive authentication failures
+        description: More than 5 authentication failures in 5 minutes
+        runbook_url: https://tald-unia.internal/runbooks/auth-failures
+
+    - alert: SystemIntegrityCompromised
+      expr: device:system_integrity:status != 1
+      for: 0m
+      labels:
+        severity: critical
+        component: security
+      annotations:
+        summary: System integrity check failed
+        description: System integrity verification failed - immediate investigation required
+        runbook_url: https://tald-unia.internal/runbooks/system-integrity
+
+  # Update Management
+  - name: update_alerts
+    rules:
+    - alert: UpdateBehindSchedule
+      expr: time() - device:last_update:timestamp > 86400 * 7
+      for: 1h
+      labels:
+        severity: warning
+        component: updates
+      annotations:
+        summary: System updates behind schedule
+        description: Device has not been updated for more than 7 days
+        runbook_url: https://tald-unia.internal/runbooks/update-schedule
