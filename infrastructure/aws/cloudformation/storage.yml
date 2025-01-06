@@ -1,0 +1,243 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TALD UNIA Platform - Secure Storage Infrastructure with Advanced Data Management
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, staging, prod]
+    Description: Deployment environment
+  
+  ReplicationRegion:
+    Type: String
+    Description: Region for cross-region replication
+    Default: us-west-2
+
+Conditions:
+  IsProd: !Equals [!Ref Environment, prod]
+
+Resources:
+  # KMS Key for S3 Encryption
+  S3EncryptionKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for S3 bucket encryption
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action: kms:*
+            Resource: '*'
+          - Sid: Allow S3 Service
+            Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey
+            Resource: '*'
+
+  # LiDAR Data Bucket
+  LidarDataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${AWS::StackName}-lidar-data-${Environment}
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !GetAtt S3EncryptionKey.Arn
+      LifecycleConfiguration:
+        Rules:
+          - Id: IntelligentTiering
+            Status: Enabled
+            Transitions:
+              - StorageClass: INTELLIGENT_TIERING
+                TransitionInDays: 0
+          - Id: ArchiveOldData
+            Status: Enabled
+            Transitions:
+              - StorageClass: GLACIER
+                TransitionInDays: 90
+      ReplicationConfiguration: !If
+        - IsProd
+        - Role: !GetAtt ReplicationRole.Arn
+          Rules:
+            - Status: Enabled
+              Destination:
+                Bucket: !Sub arn:aws:s3:::${AWS::StackName}-lidar-data-${Environment}-replica
+                EncryptionConfiguration:
+                  ReplicaKmsKeyID: !GetAtt S3EncryptionKey.Arn
+        - !Ref AWS::NoValue
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LoggingConfiguration:
+        DestinationBucketName: !Ref LoggingBucket
+        LogFilePrefix: lidar-data/
+
+  # Game Assets Bucket
+  GameAssetsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${AWS::StackName}-game-assets-${Environment}
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !GetAtt S3EncryptionKey.Arn
+      LifecycleConfiguration:
+        Rules:
+          - Id: IntelligentTiering
+            Status: Enabled
+            Transitions:
+              - StorageClass: INTELLIGENT_TIERING
+                TransitionInDays: 0
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET]
+            AllowedOrigins: ['*']
+            MaxAge: 3600
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LoggingConfiguration:
+        DestinationBucketName: !Ref LoggingBucket
+        LogFilePrefix: game-assets/
+
+  # Access Logging Bucket
+  LoggingBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${AWS::StackName}-logs-${Environment}
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !GetAtt S3EncryptionKey.Arn
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldLogs
+            Status: Enabled
+            ExpirationInDays: 365
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # IAM Role for Replication
+  ReplicationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: S3ReplicationPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetReplicationConfiguration
+                  - s3:ListBucket
+                Resource: !GetAtt LidarDataBucket.Arn
+              - Effect: Allow
+                Action:
+                  - s3:GetObjectVersionForReplication
+                  - s3:GetObjectVersionAcl
+                  - s3:GetObjectVersionTagging
+                Resource: !Sub ${LidarDataBucket.Arn}/*
+              - Effect: Allow
+                Action:
+                  - s3:ReplicateObject
+                  - s3:ReplicateDelete
+                  - s3:ReplicateTags
+                Resource: !Sub arn:aws:s3:::${AWS::StackName}-lidar-data-${Environment}-replica/*
+
+  # Bucket Policies
+  LidarDataBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref LidarDataBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: EnforceSSLOnly
+            Effect: Deny
+            Principal: '*'
+            Action: s3:*
+            Resource:
+              - !GetAtt LidarDataBucket.Arn
+              - !Sub ${LidarDataBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+  GameAssetsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref GameAssetsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: EnforceSSLOnly
+            Effect: Deny
+            Principal: '*'
+            Action: s3:*
+            Resource:
+              - !GetAtt GameAssetsBucket.Arn
+              - !Sub ${GameAssetsBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+Outputs:
+  LidarDataBucketName:
+    Description: Name of the LiDAR data bucket
+    Value: !Ref LidarDataBucket
+    Export:
+      Name: !Sub ${AWS::StackName}-LidarDataBucketName
+
+  LidarDataBucketArn:
+    Description: ARN of the LiDAR data bucket
+    Value: !GetAtt LidarDataBucket.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-LidarDataBucketArn
+
+  GameAssetsBucketName:
+    Description: Name of the game assets bucket
+    Value: !Ref GameAssetsBucket
+    Export:
+      Name: !Sub ${AWS::StackName}-GameAssetsBucketName
+
+  GameAssetsBucketArn:
+    Description: ARN of the game assets bucket
+    Value: !GetAtt GameAssetsBucket.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-GameAssetsBucketArn
+
+  S3EncryptionKeyArn:
+    Description: ARN of the KMS key used for S3 encryption
+    Value: !GetAtt S3EncryptionKey.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-S3EncryptionKeyArn
