@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build outputs
+dist/
+build/
+out/
+.vite/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+!.env.development
+!.env.production
+
+# Testing artifacts
+coverage/
+.nyc_output/
+cypress/videos/
+cypress/screenshots/
+
+# IDE and editor
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+.tscache/
+
+# Logs and debugging
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs
+*.log
+
+# Cache
+.cache/
+.temp/
+.eslintcache
+
+# Project-specific
+.fleet/
+.lidar-cache/
+.mesh-network-temp/
+.vulkan-shaders/
