@@ -1,0 +1,229 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TALD UNIA Platform - CDN Infrastructure with Gaming Optimizations
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, staging, prod]
+    Description: Deployment environment
+  
+  DomainName:
+    Type: String
+    Description: Domain name for the CDN distribution
+  
+  PriceClass:
+    Type: String
+    Default: PriceClass_All
+    AllowedValues:
+      - PriceClass_100
+      - PriceClass_200
+      - PriceClass_All
+    Description: CloudFront distribution price class
+
+Conditions:
+  IsProduction: !Equals [!Ref Environment, prod]
+
+Resources:
+  CloudFrontOriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub "OAI for ${AWS::StackName}"
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        PriceClass: !Ref PriceClass
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        Comment: !Sub "TALD UNIA CDN - ${Environment}"
+        
+        # Gaming-optimized settings
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          Compress: true
+          DefaultTTL: 86400  # 24 hours
+          MaxTTL: 31536000  # 1 year
+          MinTTL: 0
+          TargetOriginId: GameContentOrigin
+          ViewerProtocolPolicy: redirect-to-https
+          CachePolicyId: !Ref GameAssetsCachePolicy
+          OriginRequestPolicyId: !Ref GameAssetsOriginRequestPolicy
+          ResponseHeadersPolicyId: !Ref GameSecurityHeadersPolicy
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !GetAtt RequestValidationFunction.FunctionARN
+
+        # Origins configuration
+        Origins:
+          - Id: GameContentOrigin
+            DomainName: !Sub "${AWS::StackName}-content.s3.${AWS::Region}.amazonaws.com"
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}"
+            OriginShield:
+              Enabled: true
+              OriginShieldRegion: !Ref AWS::Region
+
+        # Custom error responses
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 404
+            ResponsePagePath: /errors/404.html
+            ErrorCachingMinTTL: 10
+          - ErrorCode: 404
+            ResponseCode: 404
+            ResponsePagePath: /errors/404.html
+            ErrorCachingMinTTL: 10
+
+        # Security settings
+        WebACLId: !ImportValue SecurityStack:WAFWebACLId
+        ViewerCertificate:
+          AcmCertificateArn: !ImportValue SecurityStack:TLSCertificateArn
+          MinimumProtocolVersion: TLSv1.2_2021
+          SslSupportMethod: sni-only
+
+  # Cache Policy for game assets
+  GameAssetsCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub "${AWS::StackName}-game-assets-cache-policy"
+        Comment: "Cache policy for TALD UNIA game assets"
+        DefaultTTL: 86400
+        MaxTTL: 31536000
+        MinTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: none
+          HeadersConfig:
+            HeaderBehavior: whitelist
+            Headers:
+              - Origin
+              - Access-Control-Request-Method
+              - Access-Control-Request-Headers
+          QueryStringsConfig:
+            QueryStringBehavior: whitelist
+            QueryStrings:
+              - version
+              - region
+
+  # Origin Request Policy
+  GameAssetsOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: !Sub "${AWS::StackName}-game-assets-origin-policy"
+        Comment: "Origin request policy for TALD UNIA game assets"
+        HeadersConfig:
+          HeaderBehavior: whitelist
+          Headers:
+            - Origin
+            - Access-Control-Request-Method
+            - Access-Control-Request-Headers
+        QueryStringsConfig:
+          QueryStringBehavior: whitelist
+          QueryStrings:
+            - version
+            - region
+        CookiesConfig:
+          CookieBehavior: none
+
+  # Response Headers Policy
+  GameSecurityHeadersPolicy:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub "${AWS::StackName}-security-headers"
+        Comment: "Security headers for TALD UNIA CDN"
+        SecurityHeadersConfig:
+          ContentSecurityPolicy:
+            Override: true
+            ContentSecurityPolicy: "default-src 'self'; img-src 'self' data:; script-src 'self'"
+          ContentTypeOptions:
+            Override: true
+          FrameOptions:
+            FrameOption: DENY
+            Override: true
+          ReferrerPolicy:
+            ReferrerPolicy: strict-origin-when-cross-origin
+            Override: true
+          StrictTransportSecurity:
+            AccessControlMaxAgeSec: 31536000
+            IncludeSubdomains: true
+            Preload: true
+            Override: true
+          XSSProtection:
+            ModeBlock: true
+            Protection: true
+            Override: true
+
+  # Request Validation Function
+  RequestValidationFunction:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub "${AWS::StackName}-request-validation"
+      AutoPublish: true
+      FunctionConfig:
+        Comment: "Validates requests for TALD UNIA CDN"
+        Runtime: cloudfront-js-1.0
+      FunctionCode: |
+        function handler(event) {
+          var request = event.request;
+          var uri = request.uri;
+          
+          // Validate request path
+          if (!uri.match(/^\/[a-zA-Z0-9-_\/\.]+$/)) {
+            return {
+              statusCode: 400,
+              statusDescription: 'Bad Request'
+            };
+          }
+          
+          return request;
+        }
+
+  # DNS Record
+  CDNDNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !ImportValue NetworkingStack:Route53ZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt CloudFrontDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2  # CloudFront hosted zone ID
+        EvaluateTargetHealth: false
+
+Outputs:
+  CloudFrontDomainName:
+    Description: CloudFront Distribution Domain Name
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Export:
+      Name: !Sub "${AWS::StackName}:DomainName"
+
+  DistributionId:
+    Description: CloudFront Distribution ID
+    Value: !Ref CloudFrontDistribution
+    Export:
+      Name: !Sub "${AWS::StackName}:DistributionId"
+
+  OriginAccessIdentityId:
+    Description: CloudFront Origin Access Identity ID
+    Value: !Ref CloudFrontOriginAccessIdentity
+    Export:
+      Name: !Sub "${AWS::StackName}:OAIId"
+
+  S3CanonicalUserId:
+    Description: Canonical User ID for S3 Bucket Policy
+    Value: !GetAtt CloudFrontOriginAccessIdentity.S3CanonicalUserId
+    Export:
+      Name: !Sub "${AWS::StackName}:S3CanonicalUserId"
