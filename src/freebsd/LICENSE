@@ -1,0 +1,117 @@
+Copyright (c) 2024 TALD UNIA Corporation and its licensors. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, 
+are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of TALD UNIA Corporation nor the names of its contributors
+   may be used to endorse or promote products derived from this software without
+   specific prior written permission.
+
+PROPRIETARY COMPONENTS LICENSE
+
+The following components of the TALD UNIA system are proprietary and subject to
+additional licensing terms:
+
+a) LiDAR Processing Pipeline
+b) Mesh Networking Infrastructure
+c) Fleet Management System
+d) AI-driven Features
+e) Game Engine Components
+
+Use, modification, and distribution of these components require explicit written
+permission from TALD UNIA Corporation.
+
+THIRD-PARTY COMPONENTS
+
+This software includes the following third-party components, each subject to its
+own license terms:
+
+1. FreeBSD Operating System (FreeBSD License)
+   Copyright (c) The FreeBSD Project
+   Version: 9.0
+
+2. NVIDIA CUDA Toolkit (NVIDIA CUDA Toolkit License)
+   Copyright (c) NVIDIA Corporation
+   Version: 12.0
+
+3. Vulkan SDK (Apache License 2.0)
+   Copyright (c) The Khronos Group Inc.
+   Version: 1.3
+
+4. TensorRT (NVIDIA TensorRT License)
+   Copyright (c) NVIDIA Corporation
+   Version: 8.6
+
+5. WebRTC (WebRTC Software License)
+   Copyright (c) The WebRTC project authors
+   Version: M98
+
+PATENT RIGHTS
+
+TALD UNIA Corporation's patents related to:
+- Real-time LiDAR processing
+- Mesh network gaming infrastructure
+- Fleet-based multiplayer synchronization
+- AI-enhanced gameplay systems
+
+are licensed solely for use with unmodified versions of the TALD UNIA system
+or as explicitly authorized in writing.
+
+DATA PRIVACY AND PROTECTION
+
+Use of the TALD UNIA system requires compliance with:
+1. General Data Protection Regulation (GDPR)
+2. Children's Online Privacy Protection Act (COPPA)
+3. California Consumer Privacy Act (CCPA)
+4. Local data protection regulations
+
+FLEET DEPLOYMENT TERMS
+
+1. Maximum fleet size: 32 devices
+2. Minimum network requirements: <50ms P2P latency
+3. Mandatory security protocols implementation
+4. Required fleet management policies adherence
+
+DISCLAIMER
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+EXPORT COMPLIANCE
+
+This software is subject to export control regulations. Users must comply with
+all applicable export control laws and regulations, including:
+1. U.S. Export Administration Regulations (EAR)
+2. EU Export Control Regulations
+3. Local export control requirements
+
+SOURCE CODE ACCESS
+
+Access to source code components is governed by:
+1. Contribution agreements
+2. Non-disclosure agreements
+3. Security clearance requirements
+4. Export control compliance
+
+For licensing inquiries, please contact:
+TALD UNIA Corporation
+Legal Department
+licensing@taldunia.com
+
+Version: 1.0
+Last Updated: January 2024
