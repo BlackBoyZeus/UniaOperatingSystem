@@ -1,0 +1,78 @@
+{
+  "root": true,
+  "env": {
+    "browser": true,
+    "es2022": true,
+    "node": true,
+    "jest": true
+  },
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "jsx": true
+    },
+    "project": "./tsconfig.json"
+  },
+  "plugins": [
+    "@typescript-eslint",
+    "react"
+  ],
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:@typescript-eslint/recommended-requiring-type-checking",
+    "plugin:react/recommended",
+    "plugin:react/jsx-runtime"
+  ],
+  "settings": {
+    "react": {
+      "version": "detect"
+    }
+  },
+  "rules": {
+    "@typescript-eslint/explicit-function-return-type": "error",
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/no-unused-vars": "error",
+    "@typescript-eslint/strict-boolean-expressions": "error",
+    "@typescript-eslint/no-floating-promises": "error",
+    "@typescript-eslint/await-thenable": "error",
+    "@typescript-eslint/no-misused-promises": "error",
+    "react/prop-types": "off",
+    "react/react-in-jsx-scope": "off",
+    "react/jsx-no-leaked-render": "error",
+    "react/jsx-key": ["error", {
+      "checkFragmentShorthand": true
+    }],
+    "no-console": ["warn", {
+      "allow": ["warn", "error"]
+    }],
+    "no-debugger": "error",
+    "no-alert": "error",
+    "eqeqeq": "error",
+    "prefer-const": "error",
+    "no-var": "error",
+    "curly": "error",
+    "no-multiple-empty-lines": ["error", {
+      "max": 1
+    }],
+    "quotes": ["error", "single"],
+    "semi": ["error", "always"],
+    "max-lines-per-function": ["error", {
+      "max": 50
+    }],
+    "complexity": ["error", {
+      "max": 10
+    }]
+  },
+  "ignorePatterns": [
+    "dist",
+    "build",
+    "coverage",
+    "node_modules",
+    "vite.config.ts",
+    "jest.config.ts",
+    "cypress.config.ts"
+  ]
+}
