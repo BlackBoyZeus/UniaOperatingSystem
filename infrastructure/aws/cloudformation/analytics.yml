@@ -1,0 +1,230 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TALD UNIA Platform - Analytics Infrastructure with Real-time Processing
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, staging, prod]
+    Description: Deployment environment
+  
+  RetentionHours:
+    Type: Number
+    Default: 24
+    Description: Retention period for Kinesis streams in hours
+
+  ElasticsearchInstanceType:
+    Type: String
+    Default: r6g.xlarge
+    Description: Elasticsearch instance type
+
+  ElasticsearchNodeCount:
+    Type: Number
+    Default: 3
+    Description: Number of nodes in Elasticsearch cluster
+
+Resources:
+  # KMS Key for encryption
+  AnalyticsKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for analytics data encryption
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action: kms:*
+            Resource: '*'
+
+  # Kinesis Streams
+  LidarDataStream:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      Name: !Sub ${AWS::StackName}-lidar-data
+      RetentionPeriodHours: !Ref RetentionHours
+      ShardCount: 10  # Supports 30Hz LiDAR data processing
+      StreamEncryption:
+        EncryptionType: KMS
+        KeyId: !Ref AnalyticsKMSKey
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  FleetMetricsStream:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      Name: !Sub ${AWS::StackName}-fleet-metrics
+      RetentionPeriodHours: !Ref RetentionHours
+      ShardCount: 5  # Supports 32-device fleet metrics
+      StreamEncryption:
+        EncryptionType: KMS
+        KeyId: !Ref AnalyticsKMSKey
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  GameSessionStream:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      Name: !Sub ${AWS::StackName}-game-session
+      RetentionPeriodHours: !Ref RetentionHours
+      ShardCount: 5
+      StreamEncryption:
+        EncryptionType: KMS
+        KeyId: !Ref AnalyticsKMSKey
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Elasticsearch Domain
+  AnalyticsDomain:
+    Type: AWS::Elasticsearch::Domain
+    Properties:
+      DomainName: !Sub ${AWS::StackName}-analytics
+      ElasticsearchVersion: '7.10'
+      ElasticsearchClusterConfig:
+        InstanceType: !Ref ElasticsearchInstanceType
+        InstanceCount: !Ref ElasticsearchNodeCount
+        DedicatedMasterEnabled: true
+        DedicatedMasterType: !Ref ElasticsearchInstanceType
+        DedicatedMasterCount: 3
+        ZoneAwarenessEnabled: true
+      EBSOptions:
+        EBSEnabled: true
+        VolumeType: gp3
+        VolumeSize: 100
+      EncryptionAtRestOptions:
+        Enabled: true
+        KmsKeyId: !Ref AnalyticsKMSKey
+      NodeToNodeEncryptionOptions:
+        Enabled: true
+      DomainEndpointOptions:
+        EnforceHTTPS: true
+        TLSSecurityPolicy: Policy-Min-TLS-1-2-2019-07
+      AdvancedOptions:
+        rest.action.multi.allow_explicit_index: 'true'
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # IAM Roles
+  StreamProcessorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${AWS::StackName}-stream-processor
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: StreamProcessorPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - kinesis:GetRecords
+                  - kinesis:GetShardIterator
+                  - kinesis:DescribeStream
+                  - kinesis:ListShards
+                Resource:
+                  - !GetAtt LidarDataStream.Arn
+                  - !GetAtt FleetMetricsStream.Arn
+                  - !GetAtt GameSessionStream.Arn
+              - Effect: Allow
+                Action:
+                  - es:ESHttp*
+                Resource: !Sub ${AnalyticsDomain.DomainArn}/*
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                Resource: !GetAtt AnalyticsKMSKey.Arn
+
+  # Lambda Functions
+  StreamProcessor:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-stream-processor
+      Runtime: nodejs18.x
+      Handler: index.handler
+      Role: !GetAtt StreamProcessorRole.Arn
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+            // Stream processing logic
+          }
+      MemorySize: 1024
+      Timeout: 300
+      Environment:
+        Variables:
+          ES_ENDPOINT: !GetAtt AnalyticsDomain.DomainEndpoint
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Lambda Event Source Mappings
+  LidarProcessorMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      FunctionName: !Ref StreamProcessor
+      EventSourceArn: !GetAtt LidarDataStream.Arn
+      StartingPosition: LATEST
+      BatchSize: 100
+      MaximumBatchingWindowInSeconds: 1
+
+  FleetMetricsMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      FunctionName: !Ref StreamProcessor
+      EventSourceArn: !GetAtt FleetMetricsStream.Arn
+      StartingPosition: LATEST
+      BatchSize: 100
+      MaximumBatchingWindowInSeconds: 1
+
+  GameSessionMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      FunctionName: !Ref StreamProcessor
+      EventSourceArn: !GetAtt GameSessionStream.Arn
+      StartingPosition: LATEST
+      BatchSize: 100
+      MaximumBatchingWindowInSeconds: 1
+
+Outputs:
+  LidarDataStreamArn:
+    Description: ARN of the LiDAR data Kinesis stream
+    Value: !GetAtt LidarDataStream.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-lidar-stream-arn
+
+  FleetMetricsStreamArn:
+    Description: ARN of the fleet metrics Kinesis stream
+    Value: !GetAtt FleetMetricsStream.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-fleet-metrics-stream-arn
+
+  GameSessionStreamArn:
+    Description: ARN of the game session Kinesis stream
+    Value: !GetAtt GameSessionStream.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-game-session-stream-arn
+
+  AnalyticsDomainEndpoint:
+    Description: Endpoint of the Elasticsearch analytics domain
+    Value: !GetAtt AnalyticsDomain.DomainEndpoint
+    Export:
+      Name: !Sub ${AWS::StackName}-es-endpoint
+
+  StreamProcessorRoleArn:
+    Description: ARN of IAM role for stream processors
+    Value: !GetAtt StreamProcessorRole.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-processor-role-arn
