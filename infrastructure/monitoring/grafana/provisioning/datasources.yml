@@ -1,0 +1,43 @@
+# Grafana Datasource Provisioning Configuration v10.0.0
+# Configures monitoring data sources for TALD UNIA platform with 
+# performance and security metric collection capabilities
+
+apiVersion: 1
+
+# Clean up any existing datasource with same name
+deleteDatasources:
+  - name: TALD UNIA Prometheus
+    orgId: 1
+
+# Configure Prometheus datasource with performance and security monitoring settings
+datasources:
+  - name: TALD UNIA Prometheus
+    type: prometheus
+    access: proxy
+    orgId: 1
+    url: http://prometheus:9090
+    basicAuth: false
+    isDefault: true
+    version: 1
+    editable: false
+    jsonData:
+      # High resolution 15s scrape interval for detailed metrics
+      timeInterval: "15s"
+      
+      # 30s timeout for complex metric queries
+      queryTimeout: "30s"
+      
+      # Use POST method for large metric queries
+      httpMethod: "POST"
+      
+      # Enable alert management for security monitoring
+      manageAlerts: true
+      
+      # Prometheus version and type configuration
+      prometheusType: "Prometheus"
+      prometheusVersion: "2.45.0"
+      
+      # Trace ID configuration for distributed tracing
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: tempo
