@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" 
+     viewBox="0 0 24 24"
+     width="24"
+     height="24"
+     role="img"
+     aria-label="Game"
+     shape-rendering="geometricPrecision"
+     text-rendering="optimizeLegibility"
+     vector-effect="non-scaling-stroke"
+     color-profile="display-p3"
+     color-interpolation="linearRGB">
+  
+  <title>Game Icon</title>
+  <desc>Game interface icon</desc>
+
+  <style>
+    :root {
+      color-scheme: light dark;
+    }
+    .game-icon {
+      fill: var(--game-icon-light, #1A1A1A);
+      stroke: none;
+      paint-order: fill;
+      transform-origin: center;
+      transition: fill 0.2s ease;
+    }
+    @media (prefers-color-scheme: dark) {
+      .game-icon {
+        fill: var(--game-icon-dark, #E6E6E6);
+      }
+    }
+    @media (dynamic-range: high) {
+      .game-icon {
+        fill: var(--game-icon-hdr, color(display-p3 0.1 0.1 0.1));
+      }
+    }
+    @media (forced-colors: active) {
+      .game-icon {
+        fill: CanvasText;
+      }
+    }
+  </style>
+
+  <g class="game-icon">
+    <!-- Game controller body -->
+    <path d="M21 12c0-4.4-3.6-8-8-8s-8 3.6-8 8 3.6 8 8 8c1.1 0 2-.9 2-2s-.9-2-2-2c-2.2 0-4-1.8-4-4s1.8-4 4-4 4 1.8 4 4c0 1.1.9 2 2 2s2-.9 2-2z"
+          paint-order="stroke fill markers"
+          shape-rendering="geometricPrecision"/>
+    
+    <!-- D-pad -->
+    <path d="M7 11v2h2v2h2v-2h2v-2h-2V9H9v2H7z"
+          paint-order="stroke fill markers"
+          shape-rendering="geometricPrecision"/>
+    
+    <!-- Action buttons -->
+    <circle cx="17" cy="13" r="1"
+            paint-order="stroke fill markers"
+            shape-rendering="geometricPrecision"/>
+    <circle cx="15" cy="15" r="1"
+            paint-order="stroke fill markers"
+            shape-rendering="geometricPrecision"/>
+  </g>
+
+  <defs>
+    <!-- GPU acceleration hints -->
+    <filter id="gpu">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="0"/>
+    </filter>
+    
+    <!-- HDR color profile -->
+    <color-profile name="display-p3"
+                  rendering-intent="perceptual"
+                  xlink:href="https://www.color.org/display-p3.icc"/>
+  </defs>
+</svg>
