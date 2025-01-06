@@ -1,0 +1,106 @@
+{
+  "regularUser": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "username": "testUser",
+    "email": "test@tald.dev",
+    "role": "USER",
+    "deviceCapabilities": {
+      "lidarSupported": true,
+      "meshNetworkSupported": true,
+      "vulkanVersion": "1.3",
+      "hardwareSecurityLevel": "TPM2.0",
+      "scanningResolution": 0.01,
+      "maxFleetSize": 32
+    },
+    "lastActive": "2024-01-01T00:00:00Z",
+    "securityLevel": "STANDARD",
+    "profile": {
+      "userId": "550e8400-e29b-41d4-a716-446655440000",
+      "displayName": "Test User",
+      "avatar": "default.png",
+      "status": "ONLINE",
+      "preferences": {
+        "theme": "dark",
+        "notifications": true,
+        "privacy": {
+          "shareLocation": false,
+          "shareScanData": false,
+          "dataRetentionDays": 30,
+          "gdprConsent": true
+        },
+        "fleetPreferences": {
+          "autoJoin": false,
+          "preferredRole": "MEMBER",
+          "maxFleetSize": 32
+        },
+        "scanningPreferences": {
+          "resolution": 0.01,
+          "autoShare": false,
+          "retentionPolicy": "STANDARD"
+        }
+      },
+      "fleetId": null,
+      "activeScans": 0
+    },
+    "auth": {
+      "userId": "550e8400-e29b-41d4-a716-446655440000",
+      "accessToken": "mock.jwt.token",
+      "refreshToken": "mock.refresh.token",
+      "hardwareToken": "mock.hardware.token",
+      "expiresAt": "2024-01-01T01:00:00Z",
+      "tpmSignature": "mock.tpm.signature"
+    }
+  },
+  "fleetLeader": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "username": "fleetLeader",
+    "email": "fleet@tald.dev",
+    "role": "FLEET_LEADER",
+    "deviceCapabilities": {
+      "lidarSupported": true,
+      "meshNetworkSupported": true,
+      "vulkanVersion": "1.3",
+      "hardwareSecurityLevel": "TPM2.0",
+      "scanningResolution": 0.01,
+      "maxFleetSize": 32
+    },
+    "lastActive": "2024-01-01T00:00:00Z",
+    "securityLevel": "ENHANCED",
+    "profile": {
+      "userId": "550e8400-e29b-41d4-a716-446655440001",
+      "displayName": "Fleet Leader",
+      "avatar": "leader.png",
+      "status": "IN_FLEET",
+      "preferences": {
+        "theme": "light",
+        "notifications": true,
+        "privacy": {
+          "shareLocation": true,
+          "shareScanData": true,
+          "dataRetentionDays": 30,
+          "gdprConsent": true
+        },
+        "fleetPreferences": {
+          "autoJoin": true,
+          "preferredRole": "LEADER",
+          "maxFleetSize": 32
+        },
+        "scanningPreferences": {
+          "resolution": 0.01,
+          "autoShare": true,
+          "retentionPolicy": "ENHANCED"
+        }
+      },
+      "fleetId": "650e8400-e29b-41d4-a716-446655440001",
+      "activeScans": 1
+    },
+    "auth": {
+      "userId": "550e8400-e29b-41d4-a716-446655440001",
+      "accessToken": "mock.fleet.jwt.token",
+      "refreshToken": "mock.fleet.refresh.token",
+      "hardwareToken": "mock.fleet.hardware.token",
+      "expiresAt": "2024-01-01T01:00:00Z",
+      "tpmSignature": "mock.fleet.tpm.signature"
+    }
+  }
+}
