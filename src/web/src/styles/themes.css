@@ -1,0 +1,135 @@
+/* TALD UNIA Theme System
+ * Implements HDR-aware color themes with P3 color gamut support
+ * and dynamic contrast adaptation for optimal gaming experience
+ */
+
+@import '../styles/variables.css';
+
+/* Dark Theme - Optimized for gaming sessions */
+[data-theme='dark'] {
+  --primary-color: color(display-p3 0.486 0.302 1);
+  --primary-color-hover: color(display-p3 0.608 0.490 1);
+  --secondary-color: color(display-p3 0 0.898 1);
+  --secondary-color-hover: color(display-p3 0.2 0.933 1);
+  --background-color: color(display-p3 0.071 0.071 0.071);
+  --surface-color: color(display-p3 0.118 0.118 0.118);
+  --text-primary: color(display-p3 1 1 1);
+  --text-secondary: color(display-p3 1 1 1 / 0.7);
+  --border-color: color(display-p3 1 1 1 / 0.12);
+  --shadow-color: color(display-p3 0 0 0 / 0.5);
+  --overlay-color: color(display-p3 0 0 0 / 0.5);
+  --error-color: color(display-p3 1 0.322 0.322);
+  --success-color: color(display-p3 0.412 0.941 0.682);
+  --warning-color: color(display-p3 1 0.843 0.251);
+  --lidar-point-color: color(display-p3 0.486 0.302 1 / 0.8);
+  --mesh-line-color: color(display-p3 0 0.898 1 / 0.6);
+  --fleet-indicator-color: color(display-p3 0.486 0.302 1);
+  --game-ui-glow: 0 0 10px var(--primary-color);
+}
+
+/* Light Theme - For menu navigation and social features */
+[data-theme='light'] {
+  --primary-color: color(display-p3 0.384 0 0.918);
+  --primary-color-hover: color(display-p3 0.486 0.302 1);
+  --secondary-color: color(display-p3 0 0.722 0.831);
+  --secondary-color-hover: color(display-p3 0 0.898 1);
+  --background-color: color(display-p3 1 1 1);
+  --surface-color: color(display-p3 0.961 0.961 0.961);
+  --text-primary: color(display-p3 0 0 0);
+  --text-secondary: color(display-p3 0 0 0 / 0.7);
+  --border-color: color(display-p3 0 0 0 / 0.12);
+  --shadow-color: color(display-p3 0 0 0 / 0.2);
+  --overlay-color: color(display-p3 0 0 0 / 0.3);
+  --error-color: color(display-p3 0.835 0 0);
+  --success-color: color(display-p3 0 0.784 0.325);
+  --warning-color: color(display-p3 1 0.702 0);
+  --lidar-point-color: color(display-p3 0.384 0 0.918 / 0.8);
+  --mesh-line-color: color(display-p3 0 0.722 0.831 / 0.6);
+  --fleet-indicator-color: color(display-p3 0.384 0 0.918);
+  --game-ui-glow: 0 0 10px var(--primary-color);
+}
+
+/* High Contrast Theme - Accessibility optimized */
+[data-theme='high-contrast'] {
+  --primary-color: color(display-p3 1 1 1);
+  --primary-color-hover: color(display-p3 0.878 0.878 0.878);
+  --secondary-color: color(display-p3 1 1 0);
+  --secondary-color-hover: color(display-p3 0.898 0.898 0);
+  --background-color: color(display-p3 0 0 0);
+  --surface-color: color(display-p3 0.071 0.071 0.071);
+  --text-primary: color(display-p3 1 1 1);
+  --text-secondary: color(display-p3 1 1 1);
+  --border-color: color(display-p3 1 1 1);
+  --shadow-color: color(display-p3 1 1 1 / 0.5);
+  --overlay-color: color(display-p3 0 0 0 / 0.8);
+  --error-color: color(display-p3 1 0 0);
+  --success-color: color(display-p3 0 1 0);
+  --warning-color: color(display-p3 1 1 0);
+  --lidar-point-color: color(display-p3 1 1 1);
+  --mesh-line-color: color(display-p3 1 1 0);
+  --fleet-indicator-color: color(display-p3 1 1 1);
+  --game-ui-glow: 0 0 15px var(--primary-color);
+}
+
+/* HDR Display Support */
+@media (dynamic-range: high) {
+  [data-theme='dark'] {
+    --primary-color: color(display-p3 0.486 0.302 1);
+    --secondary-color: color(display-p3 0 0.898 1);
+    --game-ui-glow: 0 0 12px var(--primary-color);
+  }
+
+  [data-theme='light'] {
+    --primary-color: color(display-p3 0.384 0 0.918);
+    --secondary-color: color(display-p3 0 0.722 0.831);
+    --game-ui-glow: 0 0 12px var(--primary-color);
+  }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: more) {
+  :root {
+    --text-secondary: var(--text-primary);
+    --border-color: var(--text-primary);
+    --shadow-color: var(--text-primary);
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --animation-duration-fast: 0ms;
+    --animation-duration-normal: 0ms;
+    --animation-duration-slow: 0ms;
+  }
+}
+
+/* Fallback for browsers without P3 color support */
+@supports not (color: color(display-p3 0 0 0)) {
+  [data-theme='dark'] {
+    --primary-color: #7C4DFF;
+    --primary-color-hover: #9B7DFF;
+    --secondary-color: #00E5FF;
+    --secondary-color-hover: #33EEFF;
+    --background-color: #121212;
+    --surface-color: #1E1E1E;
+  }
+
+  [data-theme='light'] {
+    --primary-color: #6200EA;
+    --primary-color-hover: #7C4DFF;
+    --secondary-color: #00B8D4;
+    --secondary-color-hover: #00E5FF;
+    --background-color: #FFFFFF;
+    --surface-color: #F5F5F5;
+  }
+
+  [data-theme='high-contrast'] {
+    --primary-color: #FFFFFF;
+    --primary-color-hover: #E0E0E0;
+    --secondary-color: #FFFF00;
+    --secondary-color-hover: #E5E500;
+    --background-color: #000000;
+    --surface-color: #121212;
+  }
+}
