@@ -1,0 +1,37 @@
+# TALD UNIA Platform - Code Ownership Rules
+# This file defines code ownership and review requirements across the repository
+# Format: path/to/directory @owner1 @owner2
+
+# Backend Services
+src/backend/**                    @backend-team @security-team
+src/backend/src/services/auth/**  @security-team
+src/backend/src/services/lidar/** @backend-team @system-team
+src/backend/src/services/fleet/** @backend-team @network-team
+
+# FreeBSD System Code
+src/freebsd/**                    @system-team @security-team
+src/freebsd/kernel/**             @system-team @security-team
+src/freebsd/boot/**              @system-team @security-team
+src/freebsd/lib/libsecurity/**   @security-team
+
+# Frontend Web Code
+src/web/**                       @frontend-team @security-team
+
+# Infrastructure and DevOps
+infrastructure/**                @devops-team @security-team
+.github/**                       @devops-team
+
+# Security-Critical Components
+**/crypto/**                     @security-team
+**/security/**                   @security-team
+**/auth/**                       @security-team
+
+# Network and Fleet Management
+**/fleet/**                      @backend-team @network-team
+**/network/**                    @network-team @security-team
+
+# Emergency Hotfix Paths
+**/hotfix/**                     @security-team @system-team
+
+# Default owners for everything else
+*                                @backend-team @security-team
