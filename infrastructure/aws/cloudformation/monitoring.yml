@@ -1,0 +1,246 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TALD UNIA Platform Monitoring Infrastructure
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Description: Environment name for resource tagging and isolation
+    Default: production
+  
+  PrometheusRetentionPeriod:
+    Type: String
+    Description: Data retention period for Prometheus metrics
+    Default: 15d
+  
+  GrafanaInstanceType:
+    Type: String
+    Description: EC2 instance type for Grafana server
+    Default: t3.medium
+  
+  AlertingThresholds:
+    Type: Map
+    Description: Map of alert thresholds for different metrics
+    Default:
+      CPUUtilization: '70'
+      MemoryUtilization: '80'
+      APILatency: '200'
+      ErrorRate: '1'
+
+Resources:
+  # ECS Cluster for Monitoring Services
+  MonitoringCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub ${EnvironmentName}-monitoring-cluster
+      CapacityProviders: 
+        - FARGATE
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: Service
+          Value: Monitoring
+
+  # Prometheus Task Definition
+  PrometheusTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: prometheus
+      RequiresCompatibilities: 
+        - FARGATE
+      NetworkMode: awsvpc
+      Cpu: '1024'
+      Memory: '2048'
+      ExecutionRoleArn: !GetAtt PrometheusExecutionRole.Arn
+      TaskRoleArn: !GetAtt PrometheusTaskRole.Arn
+      ContainerDefinitions:
+        - Name: prometheus
+          Image: prom/prometheus:v2.45.0
+          Essential: true
+          PortMappings:
+            - ContainerPort: 9090
+              Protocol: tcp
+          MountPoints:
+            - SourceVolume: prometheus-config
+              ContainerPath: /etc/prometheus
+              ReadOnly: true
+            - SourceVolume: prometheus-data
+              ContainerPath: /prometheus
+              ReadOnly: false
+          Environment:
+            - Name: PROMETHEUS_RETENTION_PERIOD
+              Value: !Ref PrometheusRetentionPeriod
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref PrometheusLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: prometheus
+      Volumes:
+        - Name: prometheus-config
+          EFSVolumeConfiguration:
+            FilesystemId: !Ref PrometheusEFS
+            RootDirectory: /prometheus/config
+        - Name: prometheus-data
+          EFSVolumeConfiguration:
+            FilesystemId: !Ref PrometheusEFS
+            RootDirectory: /prometheus/data
+
+  # Grafana Task Definition
+  GrafanaTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: grafana
+      RequiresCompatibilities: 
+        - FARGATE
+      NetworkMode: awsvpc
+      Cpu: '1024'
+      Memory: '2048'
+      ExecutionRoleArn: !GetAtt GrafanaExecutionRole.Arn
+      TaskRoleArn: !GetAtt GrafanaTaskRole.Arn
+      ContainerDefinitions:
+        - Name: grafana
+          Image: grafana/grafana:9.5.0
+          Essential: true
+          PortMappings:
+            - ContainerPort: 3000
+              Protocol: tcp
+          MountPoints:
+            - SourceVolume: grafana-storage
+              ContainerPath: /var/lib/grafana
+              ReadOnly: false
+          Environment:
+            - Name: GF_SECURITY_ADMIN_PASSWORD
+              Value: !Sub '{{resolve:secretsmanager:${GrafanaSecrets}:SecretString:adminPassword}}'
+            - Name: GF_AUTH_ANONYMOUS_ENABLED
+              Value: 'false'
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref GrafanaLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: grafana
+      Volumes:
+        - Name: grafana-storage
+          EFSVolumeConfiguration:
+            FilesystemId: !Ref GrafanaEFS
+            RootDirectory: /grafana
+
+  # EFS for Persistent Storage
+  PrometheusEFS:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      PerformanceMode: generalPurpose
+      Encrypted: true
+      BackupPolicy:
+        Status: ENABLED
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-prometheus-efs
+
+  GrafanaEFS:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      PerformanceMode: generalPurpose
+      Encrypted: true
+      BackupPolicy:
+        Status: ENABLED
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-grafana-efs
+
+  # Security Groups
+  MonitoringSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for monitoring services
+      VpcId: !ImportValue 
+        'Fn::Sub': ${EnvironmentName}-VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 9090
+          ToPort: 9090
+          CidrIp: 10.0.0.0/8
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          CidrIp: 10.0.0.0/8
+
+  # IAM Roles
+  PrometheusExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  PrometheusTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: PrometheusAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecs:ListClusters
+                  - ecs:ListTasks
+                  - ecs:DescribeTasks
+                Resource: '*'
+
+  # CloudWatch Log Groups
+  PrometheusLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/${EnvironmentName}/prometheus
+      RetentionInDays: 30
+
+  GrafanaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/${EnvironmentName}/grafana
+      RetentionInDays: 30
+
+  # Secrets Management
+  GrafanaSecrets:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub ${EnvironmentName}/grafana
+      Description: Grafana admin credentials
+      GenerateSecretString:
+        SecretStringTemplate: '{"adminUser": "admin"}'
+        GenerateStringKey: adminPassword
+        PasswordLength: 16
+        ExcludeCharacters: '"@/\'
+
+Outputs:
+  PrometheusEndpoint:
+    Description: Prometheus server endpoint URL
+    Value: !Sub https://prometheus.${EnvironmentName}.tald-unia.internal
+    Export:
+      Name: !Sub ${AWS::StackName}-PrometheusEndpoint
+
+  GrafanaEndpoint:
+    Description: Grafana dashboard endpoint URL
+    Value: !Sub https://grafana.${EnvironmentName}.tald-unia.internal
+    Export:
+      Name: !Sub ${AWS::StackName}-GrafanaEndpoint
+
+  MonitoringClusterArn:
+    Description: ARN of the monitoring ECS cluster
+    Value: !GetAtt MonitoringCluster.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-MonitoringClusterArn
