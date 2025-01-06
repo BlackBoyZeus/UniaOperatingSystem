@@ -1,0 +1,63 @@
+# Prometheus Recording Rules Configuration v2.45.0
+# Evaluation Interval: 15s
+
+groups:
+  # Device-level metrics aggregations
+  - name: device_metrics
+    rules:
+      - record: device:cpu_usage:avg_5m
+        expr: avg_over_time(cpu_usage[5m])
+        labels:
+          metric_type: performance
+      - record: device:battery_drain_rate:avg_15m
+        expr: rate(battery_level[15m])
+        labels:
+          metric_type: hardware
+
+  # LiDAR system performance metrics
+  - name: lidar_metrics
+    rules:
+      - record: lidar:processing_latency:avg_1m
+        expr: avg_over_time(lidar_processing_duration_ms[1m])
+        labels:
+          metric_type: performance
+      - record: lidar:point_cloud_density:avg_5m
+        expr: avg_over_time(lidar_point_cloud_points_total[5m])
+        labels:
+          metric_type: quality
+
+  # Game engine performance tracking
+  - name: game_engine_metrics
+    rules:
+      - record: game:frame_time:avg_1m
+        expr: avg_over_time(frame_render_duration_ms[1m])
+        labels:
+          metric_type: performance
+      - record: game:mesh_network_latency:avg_1m
+        expr: avg_over_time(mesh_network_latency_ms[1m])
+        labels:
+          metric_type: network
+
+  # Fleet management and coordination metrics
+  - name: fleet_metrics
+    rules:
+      - record: fleet:sync_success_rate:5m
+        expr: sum(rate(fleet_sync_success_total[5m])) / sum(rate(fleet_sync_attempts_total[5m]))
+        labels:
+          metric_type: reliability
+      - record: fleet:connected_devices:current
+        expr: sum(fleet_connected_devices)
+        labels:
+          metric_type: capacity
+
+  # Security and system integrity metrics
+  - name: security_metrics
+    rules:
+      - record: security:auth_failure_rate:5m
+        expr: sum(rate(authentication_failures_total[5m]))
+        labels:
+          metric_type: security
+      - record: security:system_integrity:status
+        expr: system_integrity_check_status
+        labels:
+          metric_type: security
