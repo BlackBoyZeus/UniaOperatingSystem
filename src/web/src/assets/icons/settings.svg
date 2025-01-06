@@ -1,0 +1,35 @@
+<svg 
+  viewBox="0 0 24 24" 
+  fill="currentColor" 
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-label="Settings"
+  focusable="false"
+  data-testid="settings-icon"
+  style="transform-origin: center; will-change: transform"
+>
+  <path
+    fill-rule="evenodd"
+    clip-rule="evenodd"
+    d="M11.4 3a.6.6 0 00-.6.6v.8a1 1 0 01-.757.97 6.97 6.97 0 00-.94.31 1 1 0 01-1.203-.25l-.57-.57a.6.6 0 00-.848 0L5.56 6.772a.6.6 0 000 .848l.57.57a1 1 0 01.25 1.203 6.97 6.97 0 00-.31.94 1 1 0 01-.97.757h-.8a.6.6 0 00-.6.6v1.62a.6.6 0 00.6.6h.8a1 1 0 01.97.757c.087.325.188.642.31.94a1 1 0 01-.25 1.203l-.57.57a.6.6 0 000 .848l1.912 1.912a.6.6 0 00.848 0l.57-.57a1 1 0 011.203-.25c.298.122.615.223.94.31a1 1 0 01.757.97v.8a.6.6 0 00.6.6h1.62a.6.6 0 00.6-.6v-.8a1 1 0 01.757-.97c.325-.087.642-.188.94-.31a1 1 0 011.203.25l.57.57a.6.6 0 00.848 0l1.912-1.912a.6.6 0 000-.848l-.57-.57a1 1 0 01-.25-1.203c.122-.298.223-.615.31-.94a1 1 0 01.97-.757h.8a.6.6 0 00.6-.6v-1.62a.6.6 0 00-.6-.6h-.8a1 1 0 01-.97-.757 6.97 6.97 0 00-.31-.94 1 1 0 01.25-1.203l.57-.57a.6.6 0 000-.848L18.428 5.56a.6.6 0 00-.848 0l-.57.57a1 1 0 01-1.203.25 6.97 6.97 0 00-.94-.31 1 1 0 01-.757-.97v-.8a.6.6 0 00-.6-.6h-1.62z"
+  />
+  <path
+    fill-rule="evenodd"
+    clip-rule="evenodd"
+    d="M12 10a2 2 0 100 4 2 2 0 000-4zm-3.5 2a3.5 3.5 0 117 0 3.5 3.5 0 01-7 0z"
+  />
+  <defs>
+    <style>
+      @media (prefers-reduced-motion: no-preference) {
+        svg:hover {
+          transform: scale(1.1);
+          transition: transform 200ms ease-out;
+        }
+        svg:active {
+          transform: scale(0.95);
+          transition: transform 100ms ease-in;
+        }
+      }
+    </style>
+  </defs>
+</svg>
