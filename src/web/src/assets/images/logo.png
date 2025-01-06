@@ -1,0 +1,22 @@
+Format: PNG
+Color Space: Display P3
+Color Depth: 10-bit
+Transparency: Supported
+Dynamic Range: HDR
+Dimensions: 512x512px (1x), 1024x1024px (2x), 1536x1536px (3x)
+Aspect Ratio: 1:1
+
+HDR Metadata:
+- Max Content Light Level: 1000 nits
+- Max Frame Average Light Level: 400 nits
+- Mastering Display Luminance: 0.05-1000 nits
+
+Optimization:
+- Lossless compression
+- Interlacing enabled
+- Embedded color profile
+
+Accessibility:
+- Minimum contrast ratio: 4.5:1
+- Color blind safe design
+- Alt text: "TALD UNIA Gaming Platform Logo"
