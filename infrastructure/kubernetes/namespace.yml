@@ -1,0 +1,153 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tald-unia
+  labels:
+    name: tald-unia
+    environment: production
+    app: tald-gaming-platform
+    managed-by: kustomize
+    security-tier: restricted
+    monitoring: enabled
+  annotations:
+    description: "TALD UNIA Gaming Platform Production Namespace"
+    version: "1.0.0"
+    contact: "platform-team@tald-unia.com"
+    security.tald.io/compliance-level: "high"
+    monitoring.tald.io/prometheus-enabled: "true"
+    backup.tald.io/retention: "30d"
+spec:
+  finalizers:
+    - kubernetes
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: tald-unia-compute-quota
+  namespace: tald-unia
+spec:
+  hard:
+    requests.cpu: "24"
+    requests.memory: "48Gi"
+    limits.cpu: "32"
+    limits.memory: "64Gi"
+    requests.nvidia.com/gpu: "4"
+    limits.nvidia.com/gpu: "8"
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: tald-unia-storage-quota
+  namespace: tald-unia
+spec:
+  hard:
+    requests.storage: "500Gi"
+    persistentvolumeclaims: "20"
+    requests.ephemeral-storage: "100Gi"
+    limits.ephemeral-storage: "200Gi"
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: tald-unia-object-quota
+  namespace: tald-unia
+spec:
+  hard:
+    pods: "100"
+    services: "50"
+    configmaps: "50"
+    secrets: "50"
+    resourcequotas: "10"
+    networkpolicies: "20"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: tald-unia-limits
+  namespace: tald-unia
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: "500m"
+        memory: "512Mi"
+        ephemeral-storage: "1Gi"
+      defaultRequest:
+        cpu: "200m"
+        memory: "256Mi"
+        ephemeral-storage: "512Mi"
+      max:
+        cpu: "4"
+        memory: "8Gi"
+        ephemeral-storage: "10Gi"
+      min:
+        cpu: "100m"
+        memory: "128Mi"
+        ephemeral-storage: "256Mi"
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tald-unia-default-deny
+  namespace: tald-unia
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tald-unia-allow-same-namespace
+  namespace: tald-unia
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: tald-unia
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tald-unia-allow-monitoring
+  namespace: tald-unia
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+        - podSelector:
+            matchLabels:
+              app: prometheus
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tald-unia-allow-dns
+  namespace: tald-unia
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+        - podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
