@@ -1,0 +1,216 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TALD UNIA Platform - Security Infrastructure with GDPR, NIST, and COPPA Compliance
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, staging, prod]
+    Description: Deployment environment
+  
+  NetworkingStackName:
+    Type: String
+    Description: Name of the networking stack for VPC reference
+
+Conditions:
+  IsProd: !Equals [!Ref Environment, prod]
+
+Resources:
+  # KMS Keys for Data Encryption
+  GameDataKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: TALD UNIA game data encryption key with GDPR compliance
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action: kms:*
+            Resource: '*'
+      KeySpec: SYMMETRIC_DEFAULT
+      KeyUsage: ENCRYPT_DECRYPT
+      MultiRegion: true
+      PendingWindowInDays: 7
+      Tags:
+        - Key: Compliance
+          Value: GDPR
+        - Key: Environment
+          Value: !Ref Environment
+
+  GameDataKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub alias/tald-unia-${Environment}-game-data
+      TargetKeyId: !Ref GameDataKey
+
+  # Cognito User Pool
+  GameUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub tald-unia-${Environment}-users
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+      AliasAttributes:
+        - email
+        - preferred_username
+      AutoVerifiedAttributes:
+        - email
+      MfaConfiguration: OPTIONAL
+      UserPoolAddOns:
+        AdvancedSecurityMode: ENFORCED
+      PasswordPolicy:
+        MinimumLength: 12
+        RequireLowercase: true
+        RequireNumbers: true
+        RequireSymbols: true
+        RequireUppercase: true
+        TemporaryPasswordValidityDays: 1
+      Schema:
+        - Name: birthdate
+          AttributeDataType: String
+          Required: true  # COPPA compliance
+        - Name: consent_status
+          AttributeDataType: String
+          Required: true  # GDPR compliance
+      UserPoolTags:
+        Environment: !Ref Environment
+        Compliance: GDPR-COPPA-NIST
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref GameUserPool
+      ClientName: !Sub tald-unia-${Environment}-client
+      GenerateSecret: true
+      PreventUserExistenceErrors: ENABLED
+      ExplicitAuthFlows:
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+      OAuth:
+        AllowedOAuthFlows:
+          - code
+        AllowedOAuthScopes:
+          - email
+          - openid
+          - profile
+        AllowedOAuthFlowsUserPoolClient: true
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 30
+      EnableTokenRevocation: true
+
+  # IAM Roles
+  GameServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub tald-unia-${Environment}-service-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 
+                - ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: GameDataAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                  - kms:GenerateDataKey
+                Resource: !GetAtt GameDataKey.Arn
+
+  # Security Groups
+  GameSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: TALD UNIA game service security group
+      VpcId: 
+        Fn::ImportValue: !Sub ${NetworkingStackName}-VpcId
+      SecurityGroupIngress:
+        # WebRTC UDP ports
+        - IpProtocol: udp
+          FromPort: 49152
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+          Description: WebRTC UDP ports
+        # Game server TCP ports
+        - IpProtocol: tcp
+          FromPort: 27015
+          ToPort: 27030
+          CidrIp: 0.0.0.0/0
+          Description: Game server ports
+        # STUN/TURN server access
+        - IpProtocol: udp
+          FromPort: 3478
+          ToPort: 3479
+          CidrIp: 0.0.0.0/0
+          Description: STUN/TURN UDP
+        - IpProtocol: tcp
+          FromPort: 3478
+          ToPort: 3479
+          CidrIp: 0.0.0.0/0
+          Description: STUN/TURN TCP
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Name
+          Value: !Sub tald-unia-${Environment}-game-sg
+
+  SecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref GameSecurityGroup
+      IpProtocol: -1
+      FromPort: -1
+      ToPort: -1
+      SourceSecurityGroupId: !Ref GameSecurityGroup
+      Description: Allow internal fleet communication
+
+Outputs:
+  GameDataKeyArn:
+    Description: ARN of the KMS key for game data encryption
+    Value: !GetAtt GameDataKey.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-GameDataKeyArn
+
+  UserPoolId:
+    Description: ID of the Cognito user pool
+    Value: !Ref GameUserPool
+    Export:
+      Name: !Sub ${AWS::StackName}-UserPoolId
+
+  UserPoolClientId:
+    Description: ID of the Cognito user pool client
+    Value: !Ref UserPoolClient
+    Export:
+      Name: !Sub ${AWS::StackName}-UserPoolClientId
+
+  GameSecurityGroupId:
+    Description: ID of the game service security group
+    Value: !Ref GameSecurityGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-GameSecurityGroupId
+
+  GameServiceRoleArn:
+    Description: ARN of the game service IAM role
+    Value: !GetAtt GameServiceRole.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-GameServiceRoleArn
