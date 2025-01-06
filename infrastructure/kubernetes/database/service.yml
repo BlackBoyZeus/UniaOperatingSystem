@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: redis-cluster
+  namespace: tald-unia
+  labels:
+    app: redis
+    component: cache
+    part-of: tald-unia
+  annotations:
+    service.kubernetes.io/description: "Redis cluster service for TALD UNIA session caching and game state management"
+    service.kubernetes.io/version: "7.0"  # Redis version
+
+spec:
+  # Headless service for Redis cluster
+  type: ClusterIP
+  clusterIP: None  # Headless service for StatefulSet DNS resolution
+  
+  # Port configuration for Redis
+  ports:
+    - port: 6379          # Standard Redis port
+      targetPort: 6379    # Port on the pod
+      name: redis         # Named port for easier reference
+  
+  # Pod selector matching the redis-statefulset labels
+  selector:
+    app: redis
+    component: cache
+  
+  # Don't publish pods that aren't ready
+  publishNotReadyAddresses: false
+  
+  # Session affinity configuration for stable connections
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800  # 3 hour sticky session timeout
