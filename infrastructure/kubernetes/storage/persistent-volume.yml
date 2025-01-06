@@ -1,0 +1,67 @@
+# AWS EBS CSI Driver Version: v1.12.0
+# Purpose: Storage configuration for Redis cluster with high-performance characteristics
+# and encryption support
+
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ebs-sc
+  namespace: tald-unia
+  labels:
+    app: tald-unia
+    component: storage
+    tier: persistent
+    managed-by: kubernetes
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  iopsPerGB: "3000"
+  fsType: ext4
+  encrypted: "true"
+  kmsKeyId: ${aws-kms-key-id}
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+mountOptions:
+  - noatime
+  - nodiratime
+
+---
+apiVersion: storage.k8s.io/v1
+kind: PersistentVolume
+metadata:
+  name: redis-pv
+  namespace: tald-unia
+  labels:
+    app: redis
+    component: storage
+    part-of: tald-unia
+    tier: persistent
+    managed-by: kubernetes
+  annotations:
+    pv.kubernetes.io/provisioned-by: ebs.csi.aws.com
+    volume.beta.kubernetes.io/storage-class: ebs-sc
+spec:
+  capacity:
+    storage: 50Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ebs-sc
+  csi:
+    driver: ebs.csi.aws.com
+    fsType: ext4
+    volumeHandle: ${volume-id}
+    volumeAttributes:
+      encrypted: "true"
+      performance: "high"
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: topology.kubernetes.io/zone
+              operator: In
+              values:
+                - ${aws-availability-zone}
