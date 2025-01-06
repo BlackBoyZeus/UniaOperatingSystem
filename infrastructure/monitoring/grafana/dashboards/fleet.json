@@ -1,0 +1,281 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "datasource": "Prometheus",
+        "enable": true,
+        "expr": "changes(fleet_status{fleet_id=\"$fleet\"}[5m]) > 0",
+        "iconColor": "rgba(255, 96, 96, 1)",
+        "name": "Fleet Events",
+        "tags": [
+          "fleet",
+          "status"
+        ]
+      },
+      {
+        "datasource": "Prometheus",
+        "enable": true,
+        "expr": "game:mesh_network_latency:avg_1m > 45",
+        "iconColor": "rgba(255, 196, 0, 1)",
+        "name": "Latency Spikes",
+        "tags": [
+          "network",
+          "performance"
+        ]
+      }
+    ]
+  },
+  "description": "TALD UNIA Fleet Monitoring Dashboard",
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 1,
+  "id": null,
+  "iteration": 1,
+  "links": [],
+  "panels": [
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 24
+              },
+              {
+                "color": "orange",
+                "value": 28
+              },
+              {
+                "color": "red",
+                "value": 30
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "expr": "fleet:connected_devices:total{fleet_id=\"$fleet\"}",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "Connected Devices",
+          "refId": "A"
+        },
+        {
+          "expr": "fleet:device_health:summary{fleet_id=\"$fleet\"}",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "Health Status",
+          "refId": "B"
+        }
+      ],
+      "title": "Fleet Overview",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "spanNulls": true
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 50
+              }
+            ]
+          },
+          "unit": "ms"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": ["mean", "max", "last"],
+          "displayMode": "table",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "expr": "rate(game:mesh_network_latency:avg_1m{fleet_id=\"$fleet\"}[5m])",
+          "interval": "",
+          "legendFormat": "P2P Latency",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(game:mesh_network_latency:p95_1m{fleet_id=\"$fleet\"}[5m])",
+          "interval": "",
+          "legendFormat": "P95 Latency",
+          "refId": "B"
+        }
+      ],
+      "title": "Network Latency",
+      "type": "graph"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.95
+              },
+              {
+                "color": "green",
+                "value": 0.98
+              }
+            ]
+          },
+          "unit": "percentunit"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "expr": "rate(fleet:sync_success:total{fleet_id=\"$fleet\"}[5m]) / rate(fleet:sync_attempts:total{fleet_id=\"$fleet\"}[5m])",
+          "interval": "",
+          "legendFormat": "Sync Rate",
+          "refId": "A"
+        }
+      ],
+      "title": "Fleet Sync Success Rate",
+      "type": "gauge"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 30,
+  "style": "dark",
+  "tags": [
+    "fleet",
+    "monitoring",
+    "tald-unia"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "datasource": "Prometheus",
+        "definition": "label_values(fleet_id)",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Fleet",
+        "multi": false,
+        "name": "fleet",
+        "options": [],
+        "query": "label_values(fleet_id)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": "Prometheus",
+        "definition": "label_values(device_id{fleet_id=\"$fleet\"})",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Device",
+        "multi": true,
+        "name": "device",
+        "options": [],
+        "query": "label_values(device_id{fleet_id=\"$fleet\"})",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h"
+    ]
+  },
+  "timezone": "browser",
+  "title": "TALD UNIA Fleet Dashboard",
+  "uid": "tald-fleet-dashboard",
+  "version": 1
+}
