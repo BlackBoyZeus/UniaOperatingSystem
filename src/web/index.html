@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <!-- Character encoding -->
+    <meta charset="UTF-8">
+
+    <!-- Viewport configuration for gaming optimization -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, touch-action=none">
+
+    <!-- HDR and color gamut support -->
+    <meta name="theme-color" content="#000000">
+    <meta name="color-scheme" content="dark light">
+    <meta name="color-gamut" content="p3">
+    <meta name="dynamic-range" content="high">
+
+    <!-- Platform description -->
+    <meta name="description" content="TALD UNIA - Revolutionary Handheld Gaming Platform with LiDAR and Mesh Networking">
+
+    <!-- Security headers -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' wss:">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="Permissions-Policy" content="accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()">
+
+    <title>TALD UNIA</title>
+
+    <!-- Resource preloading -->
+    <link rel="preload" href="/src/styles/global.css" as="style" importance="high">
+    <link rel="preload" href="/assets/fonts/gaming-font.ttf" as="font" type="font/ttf" crossorigin="anonymous" importance="high">
+
+    <!-- DNS prefetching -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+
+    <!-- Preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin="anonymous">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="/src/styles/global.css">
+    <link rel="stylesheet" href="@fontsource/gaming-font" crossorigin="anonymous">
+</head>
+<body>
+    <!-- Root element with gaming optimizations -->
+    <div id="root" 
+         role="application" 
+         aria-label="TALD UNIA Gaming Platform"
+         data-theme="dark"
+         data-power-mode="auto"
+         data-color-gamut="p3"
+         data-dynamic-range="high"
+         data-battery-aware="true"
+         data-reduced-motion="auto"
+         class="gpu-accelerated no-touch-delay">
+    </div>
+
+    <!-- Application script with performance attributes -->
+    <script type="module" src="/src/main.tsx" async defer></script>
+
+    <!-- Prevent unwanted touch behaviors -->
+    <script>
+        document.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+        }, { passive: false });
+    </script>
+</body>
+</html>
