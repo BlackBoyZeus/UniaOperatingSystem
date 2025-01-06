@@ -1,0 +1,101 @@
+// Binary TTF font file with the following structure:
+
+// === TTF Header ===
+// Offset Table
+// - sfnt version: 0x00010000 (TrueType) or 'ttcf' (TrueType Collection)
+// - numTables: 15
+// - searchRange: 128
+// - entrySelector: 3
+// - rangeShift: 112
+
+// === Required Tables ===
+// 'cmap' - Character to glyph mapping
+// - Format 4 (Unicode BMP)
+// - Format 12 (Unicode full repertoire)
+// Unicode range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, 
+//                U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, 
+//                U+2212, U+2215, U+FEFF, U+FFFD
+
+// 'glyf' - Glyph data
+// - Optimized outlines for gaming display
+// - Bitmap optimization structures
+// - Hinting instructions for pixel-perfect rendering
+
+// 'head' - Font header
+// - Font revision: 1.0
+// - Flags: 0x000B (Optimized for cleartype)
+// - Units per em: 1000
+// - Created: (current timestamp)
+// - Modified: (current timestamp)
+
+// 'hhea' - Horizontal header
+// - Ascender: 950
+// - Descender: -250
+// - LineGap: 0
+// - Advanced Width Max: 1200
+
+// 'hmtx' - Horizontal metrics
+// - Optimized for gaming metrics
+// - Kerning pairs data
+
+// 'loca' - Index to location
+// - Format: 1 (long offsets)
+
+// 'maxp' - Maximum profile
+// - Version: 1.0
+// - numGlyphs: (calculated based on character set)
+
+// 'name' - Naming table
+// - Font Family: "TALD UNIA Gaming"
+// - Weight variants: 100-900
+// - Copyright notice
+// - Version
+// - Manufacturer
+// - License
+
+// === OpenType Variation Tables ===
+// 'fvar' - Font variations
+// - Weight axis (wght): 100-900
+// - Default weight: 400
+
+// 'gvar' - Glyph variations
+// - Variable weight data
+// - Optimization for GPU rendering
+
+// === Additional Tables ===
+// 'GPOS' - Glyph positioning
+// - Kerning pairs
+// - Mark positioning
+// - Cursive attachment
+
+// 'GSUB' - Glyph substitution
+// - Ligatures
+// - Alternate forms
+// - Gaming-specific symbols
+
+// 'OS/2' - OS/2 and Windows metrics
+// - Weight class: 100-900
+// - Width class: 5 (normal)
+// - Type flags: 0x0004 (font optimized for cleartype)
+// - Unicode ranges
+// - CodePage ranges
+
+// 'post' - PostScript
+// - Format: 2.0
+// - Italic angle: 0
+// - Underline position: -75
+// - Underline thickness: 50
+
+// 'prep' - Control Value Program
+// - Hinting instructions
+// - GPU optimization directives
+
+// === Performance Optimizations ===
+// - Bitmap optimization structures
+// - GPU acceleration hints
+// - Cleartype optimization
+// - Hinting instructions for pixel-perfect rendering
+// - Cache optimization directives
+
+// === Binary data continues with actual font data ===
+// (Binary data would follow here in the actual TTF file)
