@@ -1,0 +1,95 @@
+apiVersion: 1
+
+providers:
+  - name: 'TALD UNIA Dashboards'
+    type: 'file'
+    disableDeletion: true
+    updateIntervalSeconds: 10
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: true
+    version_validation:
+      enabled: true
+      min_version: '1.0.0'
+    security:
+      validateDashboards: true
+      enforceVersioning: true
+      backupEnabled: true
+    folders:
+      fleet:
+        title: 'Fleet Monitoring'
+        uid: 'fleet_monitoring'
+        # Fleet monitoring dashboards for P2P latency and state synchronization
+        providers:
+          - name: 'fleet'
+            folder: 'fleet'
+            type: 'file'
+            options:
+              path: /var/lib/grafana/dashboards/fleet
+      game:
+        title: 'Game Performance'
+        uid: 'game_performance'
+        # Game performance dashboards for frame times and memory usage
+        providers:
+          - name: 'game'
+            folder: 'game'
+            type: 'file'
+            options:
+              path: /var/lib/grafana/dashboards/game
+      lidar:
+        title: 'LiDAR Systems'
+        uid: 'lidar_systems'
+        # LiDAR system monitoring dashboards for processing latency and point cloud generation
+        providers:
+          - name: 'lidar'
+            folder: 'lidar'
+            type: 'file'
+            options:
+              path: /var/lib/grafana/dashboards/lidar
+      system:
+        title: 'System Monitoring'
+        uid: 'system_monitoring'
+        # System-wide monitoring dashboards including battery life and security metrics
+        providers:
+          - name: 'system'
+            folder: 'system'
+            type: 'file'
+            options:
+              path: /var/lib/grafana/dashboards/system
+
+# Default configuration for all dashboard providers
+defaults:
+  editable: false
+  refresh: '10s'
+  style: 'dark'
+  timezone: 'browser'
+  
+# Dashboard search configuration
+search:
+  hideRecent: true
+  hideSaved: false
+  hideStarred: false
+  hideShared: false
+
+# Dashboard version control settings
+versions:
+  enabled: true
+  purge_age: 30
+  max_versions: 10
+  min_interval_seconds: 60
+
+# Dashboard backup settings
+backup:
+  enabled: true
+  interval: '24h'
+  retention: '30d'
+  path: '/var/lib/grafana/backups'
+  compress: true
+
+# Access control settings
+access_control:
+  enabled: true
+  org_role: 'Editor'
+  team_ids: []
+  folder_permission_mode: 'custom'
