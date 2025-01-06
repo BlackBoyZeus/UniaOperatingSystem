@@ -1,0 +1,47 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "target": "es2021",
+    "lib": ["es2021", "dom", "webgl2"],
+    "types": ["cypress", "node", "webgl2"],
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": false,
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "allowJs": true,
+    "noEmit": true,
+    "skipLibCheck": false,
+    "baseUrl": "../",
+    "paths": {
+      "@/*": ["src/*"],
+      "@fixtures/*": ["cypress/fixtures/*"],
+      "@support/*": ["cypress/support/*"],
+      "@lidar/*": ["cypress/support/lidar/*"],
+      "@performance/*": ["cypress/support/performance/*"],
+      "@game/*": ["cypress/support/game/*"],
+      "@fleet/*": ["cypress/support/fleet/*"]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "../cypress.config.ts",
+    "support/**/*.ts",
+    "fixtures/**/*.json",
+    "integration/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.spec.js",
+    "dist",
+    "build"
+  ]
+}
