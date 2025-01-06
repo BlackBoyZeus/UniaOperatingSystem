@@ -1,0 +1,139 @@
+/* TALD UNIA Typography System v1.0.0
+ * Custom gaming font implementation with variable weights, bitmap optimization,
+ * HDR-aware text rendering, and GPU-accelerated performance optimizations
+ */
+
+@import url('./variables.css');
+
+/* Custom Gaming Font Face Definition */
+@font-face {
+  font-family: 'TALD Gaming';
+  src: url('../assets/fonts/gaming-font.ttf') format('truetype-variations');
+  font-weight: 100 900;
+  font-display: optional;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, 
+                 U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, 
+                 U+2212, U+2215, U+FEFF, U+FFFD, U+E000-E050;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Base Typography Settings */
+.typography-base {
+  font-family: var(--font-family-gaming);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+  text-rendering: optimizeLegibility;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Heading Typography */
+.typography-heading {
+  composes: typography-base;
+}
+
+.typography-heading h1 {
+  font-size: var(--font-size-h1);
+  line-height: var(--line-height-heading);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.025em;
+  will-change: transform;
+}
+
+.typography-heading h2 {
+  font-size: var(--font-size-h2);
+  line-height: var(--line-height-heading);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.0125em;
+  will-change: transform;
+}
+
+.typography-heading h3 {
+  font-size: var(--font-size-h3);
+  line-height: var(--line-height-heading);
+  font-weight: var(--font-weight-medium);
+  will-change: transform;
+}
+
+.typography-heading h4 {
+  font-size: var(--font-size-h4);
+  line-height: var(--line-height-heading);
+  font-weight: var(--font-weight-medium);
+  will-change: transform;
+}
+
+.typography-heading h5 {
+  font-size: var(--font-size-h5);
+  line-height: var(--line-height-heading);
+  font-weight: var(--font-weight-medium);
+  will-change: transform;
+}
+
+.typography-heading h6 {
+  font-size: var(--font-size-h6);
+  line-height: var(--line-height-heading);
+  font-weight: var(--font-weight-medium);
+  will-change: transform;
+}
+
+/* Body Typography */
+.typography-body {
+  composes: typography-base;
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+  font-weight: var(--font-weight-regular);
+  will-change: transform;
+}
+
+/* Caption Typography */
+.typography-caption {
+  composes: typography-base;
+  font-size: 0.875rem;
+  line-height: 1.25;
+  font-weight: var(--font-weight-regular);
+  will-change: transform;
+}
+
+/* Button Typography */
+.typography-button {
+  composes: typography-base;
+  font-size: var(--font-size-base);
+  line-height: 1;
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  will-change: transform;
+}
+
+/* Responsive Typography */
+@media (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  html {
+    font-size: 12px;
+  }
+}
+
+/* HDR Display Optimizations */
+@media (dynamic-range: high) {
+  .typography-base,
+  .typography-heading,
+  .typography-body,
+  .typography-caption,
+  .typography-button {
+    text-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
+    color-adjust: exact;
+    -webkit-font-smoothing: subpixel-antialiased;
+  }
+}
