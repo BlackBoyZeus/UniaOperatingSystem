@@ -1,0 +1,291 @@
+{
+  "emptyFleet": {
+    "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "name": "Empty Test Fleet",
+    "maxDevices": 32,
+    "members": [],
+    "status": "ACTIVE",
+    "networkStats": {
+      "averageLatency": 0,
+      "maxLatency": 0,
+      "minLatency": 0,
+      "packetsLost": 0,
+      "bandwidth": 1000,
+      "connectedPeers": 0,
+      "syncLatency": 0
+    },
+    "qualityMetrics": {
+      "connectionScore": 1,
+      "syncSuccess": 100,
+      "leaderRedundancy": 0
+    },
+    "backupLeaders": []
+  },
+
+  "singleMemberFleet": {
+    "id": "d24bf6dd-73c8-4c81-9d8d-438a8c6c0168",
+    "name": "Single Member Fleet",
+    "maxDevices": 32,
+    "members": [
+      {
+        "id": "a1b2c3d4-e5f6-4a5b-8c7d-9e0f1a2b3c4d",
+        "deviceId": "device-001",
+        "role": "LEADER",
+        "connection": {
+          "lastPing": 1677721600000,
+          "connectionQuality": 1,
+          "retryCount": 0
+        },
+        "latency": 15,
+        "connectionQuality": {
+          "signalStrength": 1,
+          "stability": 1,
+          "reliability": 1
+        },
+        "lastCRDTOperation": {
+          "timestamp": 1677721600000,
+          "type": "INIT",
+          "payload": { "version": 1 }
+        }
+      }
+    ],
+    "status": "ACTIVE",
+    "networkStats": {
+      "averageLatency": 15,
+      "maxLatency": 15,
+      "minLatency": 15,
+      "packetsLost": 0,
+      "bandwidth": 1000,
+      "connectedPeers": 1,
+      "syncLatency": 20
+    },
+    "qualityMetrics": {
+      "connectionScore": 1,
+      "syncSuccess": 100,
+      "leaderRedundancy": 0
+    },
+    "backupLeaders": []
+  },
+
+  "multiMemberFleet": {
+    "id": "c9a8b7c6-d5e4-4f3e-b2a1-0c9d8e7f6a5b",
+    "name": "Multi Member Fleet",
+    "maxDevices": 32,
+    "members": [
+      {
+        "id": "m1n2o3p4-q5r6-7s8t-9u0v-w1x2y3z4a5b6",
+        "deviceId": "device-lead",
+        "role": "LEADER",
+        "connection": {
+          "lastPing": 1677721600000,
+          "connectionQuality": 0.95,
+          "retryCount": 0
+        },
+        "latency": 25,
+        "connectionQuality": {
+          "signalStrength": 0.95,
+          "stability": 0.98,
+          "reliability": 0.97
+        },
+        "lastCRDTOperation": {
+          "timestamp": 1677721600000,
+          "type": "UPDATE",
+          "payload": { "version": 3 }
+        }
+      },
+      {
+        "id": "b1c2d3e4-f5g6-7h8i-9j0k-l1m2n3o4p5q6",
+        "deviceId": "device-backup",
+        "role": "BACKUP_LEADER",
+        "connection": {
+          "lastPing": 1677721600000,
+          "connectionQuality": 0.92,
+          "retryCount": 1
+        },
+        "latency": 30,
+        "connectionQuality": {
+          "signalStrength": 0.92,
+          "stability": 0.94,
+          "reliability": 0.93
+        },
+        "lastCRDTOperation": {
+          "timestamp": 1677721600000,
+          "type": "SYNC",
+          "payload": { "version": 3 }
+        }
+      },
+      {
+        "id": "r1s2t3u4-v5w6-7x8y-9z0a-b1c2d3e4f5g6",
+        "deviceId": "device-member",
+        "role": "MEMBER",
+        "connection": {
+          "lastPing": 1677721600000,
+          "connectionQuality": 0.88,
+          "retryCount": 0
+        },
+        "latency": 35,
+        "connectionQuality": {
+          "signalStrength": 0.88,
+          "stability": 0.90,
+          "reliability": 0.89
+        },
+        "lastCRDTOperation": {
+          "timestamp": 1677721600000,
+          "type": "SYNC",
+          "payload": { "version": 3 }
+        }
+      }
+    ],
+    "status": "ACTIVE",
+    "networkStats": {
+      "averageLatency": 30,
+      "maxLatency": 35,
+      "minLatency": 25,
+      "packetsLost": 2,
+      "bandwidth": 2500,
+      "connectedPeers": 3,
+      "syncLatency": 35
+    },
+    "qualityMetrics": {
+      "connectionScore": 0.92,
+      "syncSuccess": 98,
+      "leaderRedundancy": 0.5
+    },
+    "backupLeaders": ["b1c2d3e4-f5g6-7h8i-9j0k-l1m2n3o4p5q6"]
+  },
+
+  "fullFleet": {
+    "id": "e1f2g3h4-i5j6-7k8l-9m0n-o1p2q3r4s5t6",
+    "name": "Full Fleet (32 Members)",
+    "maxDevices": 32,
+    "members": [
+      {
+        "id": "leader-id-001",
+        "deviceId": "device-lead-001",
+        "role": "LEADER",
+        "connection": {
+          "lastPing": 1677721600000,
+          "connectionQuality": 0.95,
+          "retryCount": 0
+        },
+        "latency": 28,
+        "connectionQuality": {
+          "signalStrength": 0.95,
+          "stability": 0.96,
+          "reliability": 0.95
+        },
+        "lastCRDTOperation": {
+          "timestamp": 1677721600000,
+          "type": "SYNC",
+          "payload": { "version": 10 }
+        }
+      }
+    ],
+    "status": "ACTIVE",
+    "networkStats": {
+      "averageLatency": 42,
+      "maxLatency": 48,
+      "minLatency": 28,
+      "packetsLost": 15,
+      "bandwidth": 8000,
+      "connectedPeers": 32,
+      "syncLatency": 45
+    },
+    "qualityMetrics": {
+      "connectionScore": 0.85,
+      "syncSuccess": 95,
+      "leaderRedundancy": 0.8
+    },
+    "backupLeaders": ["backup-1", "backup-2", "backup-3"]
+  },
+
+  "degradedNetworkFleet": {
+    "id": "h1i2j3k4-l5m6-7n8o-9p0q-r1s2t3u4v5w6",
+    "name": "Degraded Network Fleet",
+    "maxDevices": 32,
+    "members": [
+      {
+        "id": "degraded-lead-001",
+        "deviceId": "device-degraded-001",
+        "role": "LEADER",
+        "connection": {
+          "lastPing": 1677721600000,
+          "connectionQuality": 0.65,
+          "retryCount": 3
+        },
+        "latency": 48,
+        "connectionQuality": {
+          "signalStrength": 0.65,
+          "stability": 0.60,
+          "reliability": 0.62
+        },
+        "lastCRDTOperation": {
+          "timestamp": 1677721600000,
+          "type": "RETRY",
+          "payload": { "version": 5 }
+        }
+      }
+    ],
+    "status": "DEGRADED",
+    "networkStats": {
+      "averageLatency": 48,
+      "maxLatency": 50,
+      "minLatency": 45,
+      "packetsLost": 25,
+      "bandwidth": 500,
+      "connectedPeers": 5,
+      "syncLatency": 49
+    },
+    "qualityMetrics": {
+      "connectionScore": 0.62,
+      "syncSuccess": 75,
+      "leaderRedundancy": 0.4
+    },
+    "backupLeaders": ["backup-degraded-1"]
+  },
+
+  "leaderTransitionFleet": {
+    "id": "t1u2v3w4-x5y6-7z8a-9b0c-d1e2f3g4h5i6",
+    "name": "Leader Transition Fleet",
+    "maxDevices": 32,
+    "members": [
+      {
+        "id": "transition-lead-001",
+        "deviceId": "device-transition-001",
+        "role": "LEADER",
+        "connection": {
+          "lastPing": 1677721600000,
+          "connectionQuality": 0.75,
+          "retryCount": 2
+        },
+        "latency": 40,
+        "connectionQuality": {
+          "signalStrength": 0.75,
+          "stability": 0.72,
+          "reliability": 0.73
+        },
+        "lastCRDTOperation": {
+          "timestamp": 1677721600000,
+          "type": "LEADER_ELECTION",
+          "payload": { "version": 8 }
+        }
+      }
+    ],
+    "status": "ACTIVE",
+    "networkStats": {
+      "averageLatency": 40,
+      "maxLatency": 45,
+      "minLatency": 35,
+      "packetsLost": 10,
+      "bandwidth": 1500,
+      "connectedPeers": 8,
+      "syncLatency": 42
+    },
+    "qualityMetrics": {
+      "connectionScore": 0.73,
+      "syncSuccess": 85,
+      "leaderRedundancy": 0.6
+    },
+    "backupLeaders": ["backup-transition-1", "backup-transition-2"]
+  }
+}
