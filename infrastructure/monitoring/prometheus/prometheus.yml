@@ -1,0 +1,96 @@
+# Prometheus configuration for TALD UNIA platform
+# Version: 2.45.0
+
+global:
+  # Global settings for all scrape targets
+  scrape_interval: 15s     # How frequently to scrape targets
+  evaluation_interval: 15s # How frequently to evaluate rules
+  scrape_timeout: 10s     # Timeout for scrape requests
+  
+  # External labels for identifying this Prometheus instance
+  external_labels:
+    monitor: 'tald-unia-production'
+    environment: 'production'
+    region: 'global'
+
+# Load alert and recording rules
+rule_files:
+  - "rules.yml"    # Performance and aggregation recording rules
+  - "alerts.yml"   # Alert definitions and thresholds
+
+# Scrape configurations for different components
+scrape_configs:
+  # Core device metrics
+  - job_name: 'tald_device_metrics'
+    metrics_path: '/metrics'
+    scheme: 'https'
+    tls_config:
+      cert_file: '/etc/prometheus/certs/client.crt'
+      key_file: '/etc/prometheus/certs/client.key'
+      ca_file: '/etc/prometheus/certs/ca.crt'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'device_metrics'
+          component: 'core'
+
+  # LiDAR processing metrics
+  - job_name: 'lidar_metrics'
+    metrics_path: '/metrics'
+    scheme: 'https'
+    scrape_interval: 5s  # More frequent scraping for critical processing metrics
+    static_configs:
+      - targets: ['lidar-service:9100']
+        labels:
+          service: 'lidar_processing'
+          component: 'processing'
+
+  # Game engine performance metrics
+  - job_name: 'game_engine_metrics'
+    metrics_path: '/metrics'
+    scheme: 'https'
+    scrape_interval: 5s  # More frequent scraping for real-time performance
+    static_configs:
+      - targets: ['game-engine:9100']
+        labels:
+          service: 'game_engine'
+          component: 'core'
+
+  # Fleet management and networking metrics
+  - job_name: 'fleet_metrics'
+    metrics_path: '/metrics'
+    scheme: 'https'
+    scrape_interval: 5s  # More frequent scraping for network performance
+    static_configs:
+      - targets: ['fleet-service:9100']
+        labels:
+          service: 'fleet_management'
+          component: 'networking'
+
+  # Security monitoring metrics
+  - job_name: 'security_metrics'
+    metrics_path: '/metrics'
+    scheme: 'https'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['security-service:9100']
+        labels:
+          service: 'security_monitoring'
+          component: 'security'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+      timeout: 5s
+      api_version: v2
+
+# Storage configuration
+storage:
+  tsdb:
+    retention_time: 15d           # How long to retain metrics
+    min_block_duration: 2h        # Minimum block duration
+    max_block_duration: 24h       # Maximum block duration
+    wal_compression: true         # Enable WAL compression
+    out_of_order_time_window: 10m # Time window for out-of-order samples
