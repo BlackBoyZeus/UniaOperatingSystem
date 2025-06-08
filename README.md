@@ -2,7 +2,7 @@
 
 {Unified Neural Interface Architecture} 
 
-A revolutionary open-source operating system specifically designed for AI-powered gaming experiences, integrating real-time LiDAR scanning, mesh networking, advanced AI capabilities, and comprehensive developer tools.
+A revolutionary open-source operating system specifically designed for AI-powered gaming experiences, integrating real-time LiDAR scanning, mesh networking, advanced AI capabilities, and comprehensive developer tools. UNIA OS can be run as a standalone bootable operating system, providing a console-like experience.
 
 ## Vision
 
@@ -201,6 +201,23 @@ cmake ..
 make -j$(nproc)
 ```
 
+### Bootable Experience
+
+UNIA OS can be run as a standalone operating system:
+
+```bash
+# Navigate to the boot directory
+cd src/boot
+
+# Run the build script
+./build.sh
+
+# Run in QEMU
+qemu-system-x86_64 -drive format=raw,file=target/x86_64-unia/debug/bootimage-unia-os-bootable.bin
+```
+
+For detailed instructions, see the [Bootable Experience Guide](./docs/bootable-experience-guide.md).
+
 ### System Requirements
 
 #### Development Hardware
@@ -285,6 +302,8 @@ UNIA is an open-source project that welcomes contributions from the community. P
 - [AI Framework](documentation/ai-framework/README.md)
 - [Developer Guide](documentation/developer/README.md) --- coming soon.
 - [API Reference](documentation/api/README.md) -- coming soon.
+- [Bootable Experience Guide](./docs/bootable-experience-guide.md)
+- [Cloud Testing Infrastructure](./testing/cloud_simulation/README.md)
 
 ## License
 
