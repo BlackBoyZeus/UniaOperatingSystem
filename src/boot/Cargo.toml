@@ -20,6 +20,7 @@ lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 crossbeam-queue = { version = "0.3.8", default-features = false, features = ["alloc"] }
 conquer-once = { version = "0.4.0", default-features = false }
 futures-util = { version = "0.3.28", default-features = false, features = ["alloc"] }
+volatile = "0.4.6"
 wasm-bindgen = "0.2.87"
 web-sys = { version = "0.3.64", features = [
     "Document", 
