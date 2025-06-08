@@ -2,7 +2,6 @@ use crate::{println, vga_buffer};
 use core::fmt::Write;
 use lazy_static::lazy_static;
 use spin::Mutex;
-use vga::colors::{Color16, TextModeColor};
 
 // UNIA OS Boot Animation frames
 const BOOT_FRAMES: [&str; 5] = [
