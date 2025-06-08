@@ -10,6 +10,8 @@
 extern crate alloc;
 
 pub mod allocator;
+pub mod boot_sequence;
+pub mod console;
 pub mod gdt;
 pub mod interrupts;
 pub mod memory;

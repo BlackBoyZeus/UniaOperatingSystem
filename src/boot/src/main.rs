@@ -10,6 +10,7 @@ use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
 use unia_os_bootable::{
     allocator,
+    boot_sequence,
     memory::{self, BootInfoFrameAllocator},
     println,
     task::{executor::Executor, keyboard, Task},
@@ -20,6 +21,9 @@ use x86_64::VirtAddr;
 entry_point!(kernel_main);
 
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
+    // Run the UNIA OS boot sequence
+    boot_sequence::run_boot_sequence();
+    
     println!("UNIA OS Bootable Experience");
     println!("---------------------------");
     println!("Initializing...");
