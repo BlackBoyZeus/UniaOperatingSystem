@@ -1,0 +1,97 @@
+# UNIA OS Hardware Simulation Profiles
+# These profiles define the hardware configurations used for cloud testing
+
+profiles:
+  standard_console:
+    name: "Standard Console Profile"
+    description: "Baseline configuration similar to current-gen consoles"
+    cpu:
+      cores: 8
+      architecture: "x86_64"
+      frequency: "3.5 GHz"
+    gpu:
+      cores: 2048
+      memory: "8 GB"
+      architecture: "RDNA2"
+    memory:
+      system: "16 GB"
+      bandwidth: "448 GB/s"
+    storage:
+      type: "NVMe SSD"
+      capacity: "825 GB"
+      read_speed: "5.5 GB/s"
+    network:
+      bandwidth: "1 Gbps"
+      latency: "5ms"
+    
+  high_performance_console:
+    name: "High-Performance Console Profile"
+    description: "Configuration matching expected next-gen hardware"
+    cpu:
+      cores: 16
+      architecture: "x86_64"
+      frequency: "4.0 GHz"
+    gpu:
+      cores: 4096
+      memory: "16 GB"
+      architecture: "RDNA3"
+    memory:
+      system: "32 GB"
+      bandwidth: "896 GB/s"
+    storage:
+      type: "NVMe SSD"
+      capacity: "2 TB"
+      read_speed: "9.0 GB/s"
+    network:
+      bandwidth: "10 Gbps"
+      latency: "2ms"
+    
+  ai_optimized_console:
+    name: "AI-Optimized Console Profile"
+    description: "Configuration with enhanced AI processing capabilities"
+    cpu:
+      cores: 12
+      architecture: "x86_64"
+      frequency: "3.8 GHz"
+    gpu:
+      cores: 3072
+      memory: "12 GB"
+      architecture: "RDNA3"
+    memory:
+      system: "24 GB"
+      bandwidth: "672 GB/s"
+    ai_accelerator:
+      cores: 128
+      memory: "8 GB"
+      performance: "32 TOPS"
+    storage:
+      type: "NVMe SSD"
+      capacity: "1 TB"
+      read_speed: "7.0 GB/s"
+    network:
+      bandwidth: "5 Gbps"
+      latency: "3ms"
+    
+  network_optimized_console:
+    name: "Network-Optimized Console Profile"
+    description: "Configuration with enhanced networking capabilities"
+    cpu:
+      cores: 10
+      architecture: "x86_64"
+      frequency: "3.6 GHz"
+    gpu:
+      cores: 2560
+      memory: "10 GB"
+      architecture: "RDNA2"
+    memory:
+      system: "20 GB"
+      bandwidth: "560 GB/s"
+    storage:
+      type: "NVMe SSD"
+      capacity: "1 TB"
+      read_speed: "6.5 GB/s"
+    network:
+      bandwidth: "25 Gbps"
+      latency: "1ms"
+      optimization: "Hardware accelerated packet processing"
+      mesh_capabilities: "Direct P2P connections up to 64 nodes"
