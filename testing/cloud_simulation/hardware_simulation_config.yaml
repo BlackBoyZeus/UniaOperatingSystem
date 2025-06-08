@@ -1,0 +1,521 @@
+---
+# UNIA Operating System Hardware Simulation Configuration
+# This configuration defines the cloud-based hardware profiles for testing UNIA OS
+
+# Global Configuration
+global:
+  region: us-west-2
+  vpc_id: vpc-placeholder
+  subnet_ids:
+    - subnet-placeholder1
+    - subnet-placeholder2
+    - subnet-placeholder3
+  security_group_ids:
+    - sg-placeholder
+  key_name: unia-test-key
+  iam_role: unia-test-role
+  s3_bucket: unia-test-results
+  tags:
+    Project: UNIA
+    Environment: Testing
+
+# Hardware Profiles for Console Simulation
+console_profiles:
+  # Next-Gen Console Simulation (High-End)
+  next_gen_high:
+    instance_type: g5.8xlarge
+    cpu_cores: 32
+    memory_gb: 128
+    gpu: "NVIDIA A10G"
+    storage:
+      root_volume_size_gb: 100
+      game_volume_size_gb: 1000
+      game_volume_type: io2
+      game_volume_iops: 50000
+    network:
+      bandwidth_gbps: 25
+    tags:
+      TestType: Console
+      HardwareProfile: NextGenHigh
+
+  # Next-Gen Console Simulation (Standard)
+  next_gen_standard:
+    instance_type: g5.4xlarge
+    cpu_cores: 16
+    memory_gb: 64
+    gpu: "NVIDIA A10G"
+    storage:
+      root_volume_size_gb: 100
+      game_volume_size_gb: 500
+      game_volume_type: io2
+      game_volume_iops: 25000
+    network:
+      bandwidth_gbps: 25
+    tags:
+      TestType: Console
+      HardwareProfile: NextGenStandard
+
+  # Current-Gen Console Simulation
+  current_gen:
+    instance_type: g4dn.4xlarge
+    cpu_cores: 16
+    memory_gb: 64
+    gpu: "NVIDIA T4"
+    storage:
+      root_volume_size_gb: 100
+      game_volume_size_gb: 500
+      game_volume_type: gp3
+      game_volume_iops: 16000
+    network:
+      bandwidth_gbps: 20
+    tags:
+      TestType: Console
+      HardwareProfile: CurrentGen
+
+  # Mobile Console Simulation
+  mobile_console:
+    instance_type: g4dn.2xlarge
+    cpu_cores: 8
+    memory_gb: 32
+    gpu: "NVIDIA T4"
+    storage:
+      root_volume_size_gb: 50
+      game_volume_size_gb: 256
+      game_volume_type: gp3
+      game_volume_iops: 10000
+    network:
+      bandwidth_gbps: 10
+    tags:
+      TestType: Console
+      HardwareProfile: MobileConsole
+
+# AI Testing Profiles
+ai_profiles:
+  # High-Performance AI Testing
+  ai_high:
+    instance_type: p4d.24xlarge
+    cpu_cores: 96
+    memory_gb: 1152
+    gpu: "NVIDIA A100"
+    gpu_count: 8
+    storage:
+      root_volume_size_gb: 100
+      data_volume_size_gb: 1000
+      data_volume_type: io2
+      data_volume_iops: 64000
+    network:
+      bandwidth_gbps: 400
+    tags:
+      TestType: AI
+      AIProfile: High
+
+  # Standard AI Testing
+  ai_standard:
+    instance_type: p3.8xlarge
+    cpu_cores: 32
+    memory_gb: 244
+    gpu: "NVIDIA V100"
+    gpu_count: 4
+    storage:
+      root_volume_size_gb: 100
+      data_volume_size_gb: 500
+      data_volume_type: io2
+      data_volume_iops: 32000
+    network:
+      bandwidth_gbps: 25
+    tags:
+      TestType: AI
+      AIProfile: Standard
+
+  # Edge AI Testing (Console-like)
+  ai_edge:
+    instance_type: g5.4xlarge
+    cpu_cores: 16
+    memory_gb: 64
+    gpu: "NVIDIA A10G"
+    storage:
+      root_volume_size_gb: 100
+      data_volume_size_gb: 250
+      data_volume_type: gp3
+      data_volume_iops: 16000
+    network:
+      bandwidth_gbps: 25
+    tags:
+      TestType: AI
+      AIProfile: Edge
+
+# Graphics Testing Profiles
+graphics_profiles:
+  # High-End Graphics Testing
+  graphics_high:
+    instance_type: g5.16xlarge
+    cpu_cores: 64
+    memory_gb: 256
+    gpu: "NVIDIA A10G"
+    gpu_count: 2
+    storage:
+      root_volume_size_gb: 100
+      asset_volume_size_gb: 500
+      asset_volume_type: io2
+      asset_volume_iops: 32000
+    network:
+      bandwidth_gbps: 25
+    tags:
+      TestType: Graphics
+      GraphicsProfile: High
+
+  # Standard Graphics Testing
+  graphics_standard:
+    instance_type: g5.8xlarge
+    cpu_cores: 32
+    memory_gb: 128
+    gpu: "NVIDIA A10G"
+    storage:
+      root_volume_size_gb: 100
+      asset_volume_size_gb: 250
+      asset_volume_type: gp3
+      asset_volume_iops: 16000
+    network:
+      bandwidth_gbps: 25
+    tags:
+      TestType: Graphics
+      GraphicsProfile: Standard
+
+  # AMD Graphics Testing
+  graphics_amd:
+    instance_type: g4ad.8xlarge
+    cpu_cores: 32
+    memory_gb: 128
+    gpu: "AMD Radeon Pro V520"
+    storage:
+      root_volume_size_gb: 100
+      asset_volume_size_gb: 250
+      asset_volume_type: gp3
+      asset_volume_iops: 16000
+    network:
+      bandwidth_gbps: 20
+    tags:
+      TestType: Graphics
+      GraphicsProfile: AMD
+
+# Networking Testing Profiles
+networking_profiles:
+  # Mesh Network Testing
+  mesh_network:
+    instance_type: c6i.8xlarge
+    cpu_cores: 32
+    memory_gb: 64
+    instance_count: 32
+    placement_group: cluster
+    storage:
+      root_volume_size_gb: 100
+    network:
+      bandwidth_gbps: 25
+      enhanced_networking: true
+    tags:
+      TestType: Network
+      NetworkProfile: Mesh
+
+  # NAT Traversal Testing
+  nat_traversal:
+    instance_type: c6i.4xlarge
+    cpu_cores: 16
+    memory_gb: 32
+    instance_count: 10
+    storage:
+      root_volume_size_gb: 100
+    network:
+      bandwidth_gbps: 25
+      enhanced_networking: true
+    tags:
+      TestType: Network
+      NetworkProfile: NATTraversal
+
+  # Network Conditions Simulation
+  network_conditions:
+    instance_type: c6i.2xlarge
+    cpu_cores: 8
+    memory_gb: 16
+    instance_count: 5
+    storage:
+      root_volume_size_gb: 100
+    network:
+      bandwidth_gbps: 25
+      enhanced_networking: true
+      conditions:
+        - name: "home_broadband"
+          latency_ms: 20
+          jitter_ms: 5
+          packet_loss_percent: 0.1
+        - name: "fiber"
+          latency_ms: 5
+          jitter_ms: 1
+          packet_loss_percent: 0.01
+        - name: "4g_mobile"
+          latency_ms: 50
+          jitter_ms: 15
+          packet_loss_percent: 1.0
+        - name: "unstable"
+          latency_ms: 100
+          jitter_ms: 50
+          packet_loss_percent: 5.0
+    tags:
+      TestType: Network
+      NetworkProfile: Conditions
+
+# Game Engine Integration Testing
+engine_profiles:
+  # Unreal Engine Testing
+  unreal_engine:
+    instance_type: g5.8xlarge
+    cpu_cores: 32
+    memory_gb: 128
+    gpu: "NVIDIA A10G"
+    storage:
+      root_volume_size_gb: 100
+      project_volume_size_gb: 500
+      project_volume_type: io2
+      project_volume_iops: 25000
+    network:
+      bandwidth_gbps: 25
+    tags:
+      TestType: GameEngine
+      Engine: Unreal
+
+  # Unity Engine Testing
+  unity_engine:
+    instance_type: g5.8xlarge
+    cpu_cores: 32
+    memory_gb: 128
+    gpu: "NVIDIA A10G"
+    storage:
+      root_volume_size_gb: 100
+      project_volume_size_gb: 500
+      project_volume_type: io2
+      project_volume_iops: 25000
+    network:
+      bandwidth_gbps: 25
+    tags:
+      TestType: GameEngine
+      Engine: Unity
+
+  # Godot Engine Testing
+  godot_engine:
+    instance_type: g5.4xlarge
+    cpu_cores: 16
+    memory_gb: 64
+    gpu: "NVIDIA A10G"
+    storage:
+      root_volume_size_gb: 100
+      project_volume_size_gb: 250
+      project_volume_type: gp3
+      project_volume_iops: 16000
+    network:
+      bandwidth_gbps: 25
+    tags:
+      TestType: GameEngine
+      Engine: Godot
+
+  # Custom Engine Testing
+  custom_engine:
+    instance_type: g5.8xlarge
+    cpu_cores: 32
+    memory_gb: 128
+    gpu: "NVIDIA A10G"
+    storage:
+      root_volume_size_gb: 100
+      project_volume_size_gb: 500
+      project_volume_type: io2
+      project_volume_iops: 25000
+    network:
+      bandwidth_gbps: 25
+    tags:
+      TestType: GameEngine
+      Engine: Custom
+
+# Test Scenarios
+test_scenarios:
+  # Core OS Testing
+  core_os:
+    profiles:
+      - next_gen_high
+      - next_gen_standard
+      - current_gen
+      - mobile_console
+    tests:
+      - name: boot_time
+        duration_seconds: 3600
+        parameters:
+          iterations: 100
+          modes: ["cold", "warm", "hibernate"]
+      - name: memory_management
+        duration_seconds: 7200
+        parameters:
+          pressure_levels: ["low", "medium", "high", "extreme"]
+          allocation_patterns: ["sequential", "random", "fragmented"]
+      - name: file_system
+        duration_seconds: 3600
+        parameters:
+          file_sizes: ["1MB", "100MB", "1GB", "10GB"]
+          operations: ["read", "write", "random"]
+      - name: process_scheduling
+        duration_seconds: 3600
+        parameters:
+          process_count: 100
+          priority_levels: 5
+          cpu_intensive: true
+      - name: power_management
+        duration_seconds: 7200
+        parameters:
+          transitions: 500
+          profiles: ["performance", "balanced", "power_save", "adaptive"]
+
+  # AI Testing
+  ai:
+    profiles:
+      - ai_high
+      - ai_standard
+      - ai_edge
+    tests:
+      - name: npc_behavior
+        duration_seconds: 3600
+        parameters:
+          npc_counts: [100, 500, 1000, 2000]
+          complexity_levels: ["low", "medium", "high", "extreme"]
+      - name: procedural_generation
+        duration_seconds: 3600
+        parameters:
+          world_sizes: ["small", "medium", "large", "massive"]
+          feature_density: ["sparse", "normal", "dense"]
+      - name: machine_learning
+        duration_seconds: 7200
+        parameters:
+          models: ["player_behavior", "enemy_tactics", "environment_adaptation"]
+          training_iterations: 1000
+          inference_mode: "continuous"
+      - name: hardware_acceleration
+        duration_seconds: 3600
+        parameters:
+          backends: ["cuda", "opencl", "vulkan", "none"]
+          operations: ["inference", "training", "simulation"]
+
+  # Graphics Testing
+  graphics:
+    profiles:
+      - graphics_high
+      - graphics_standard
+      - graphics_amd
+    tests:
+      - name: rendering
+        duration_seconds: 3600
+        parameters:
+          resolutions: ["1080p", "1440p", "4k"]
+          target_fps: [30, 60, 120]
+          scenes: ["simple", "complex", "extreme"]
+      - name: shader_compilation
+        duration_seconds: 1800
+        parameters:
+          shader_count: 1000
+          complexity_levels: ["low", "medium", "high"]
+      - name: mixed_reality
+        duration_seconds: 3600
+        parameters:
+          resolutions: ["1080p", "1440p"]
+          frame_rates: [60, 90, 120]
+          overlay_complexity: ["simple", "complex"]
+      - name: lighting
+        duration_seconds: 3600
+        parameters:
+          light_counts: [100, 500, 1000]
+          shadow_types: ["static", "dynamic"]
+          quality_levels: ["low", "medium", "high", "ultra"]
+
+  # Networking Testing
+  networking:
+    profiles:
+      - mesh_network
+      - nat_traversal
+      - network_conditions
+    tests:
+      - name: mesh_network
+        duration_seconds: 7200
+        parameters:
+          node_counts: [8, 16, 32]
+          topologies: ["full", "partial", "star"]
+          data_rates: ["low", "medium", "high"]
+      - name: crdt_sync
+        duration_seconds: 3600
+        parameters:
+          operation_counts: [1000, 5000, 10000]
+          concurrency_levels: ["low", "medium", "high"]
+          network_conditions: ["ideal", "realistic", "poor"]
+      - name: nat_traversal
+        duration_seconds: 7200
+        parameters:
+          scenarios: ["symmetric", "cone", "port_restricted", "address_restricted"]
+          iterations: 1000
+      - name: webrtc
+        duration_seconds: 3600
+        parameters:
+          connection_count: 100
+          data_channels: true
+          media_streams: true
+
+  # Console Simulation
+  console:
+    profiles:
+      - next_gen_high
+      - next_gen_standard
+      - current_gen
+      - mobile_console
+    tests:
+      - name: console_boot
+        duration_seconds: 3600
+        parameters:
+          iterations: 100
+          profiles: ["quick_start", "energy_save", "developer"]
+      - name: game_loading
+        duration_seconds: 3600
+        parameters:
+          game_sizes: ["small", "medium", "large", "massive"]
+          storage_types: ["ssd", "nvme", "simulated_optical"]
+      - name: fast_resume
+        duration_seconds: 3600
+        parameters:
+          game_count: 5
+          iterations: 100
+          memory_pressure: ["low", "medium", "high"]
+      - name: system_update
+        duration_seconds: 3600
+        parameters:
+          update_sizes: ["small", "medium", "large"]
+          during_gameplay: [true, false]
+
+  # Game Engine Integration
+  engine_integration:
+    profiles:
+      - unreal_engine
+      - unity_engine
+      - godot_engine
+      - custom_engine
+    tests:
+      - name: api_compatibility
+        duration_seconds: 3600
+        parameters:
+          api_sets: ["core", "graphics", "ai", "networking", "input"]
+          stress_level: ["normal", "high"]
+      - name: performance_overhead
+        duration_seconds: 3600
+        parameters:
+          benchmark_scenes: ["empty", "simple", "complex"]
+          profiling: true
+      - name: feature_access
+        duration_seconds: 3600
+        parameters:
+          features: ["ai", "procedural", "physics", "networking", "mixed_reality"]
+          integration_level: ["basic", "advanced"]
+      - name: asset_pipeline
+        duration_seconds: 3600
+        parameters:
+          asset_types: ["models", "textures", "audio", "animations"]
+          batch_sizes: ["small", "medium", "large"]

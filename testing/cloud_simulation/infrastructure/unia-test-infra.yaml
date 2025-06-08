@@ -1,0 +1,412 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'UNIA Operating System Test Infrastructure'
+
+Parameters:
+  TestRunId:
+    Type: String
+    Description: Unique identifier for this test run
+    
+  VpcId:
+    Type: String
+    Description: VPC ID for test infrastructure
+    Default: vpc-placeholder
+    
+  KeyName:
+    Type: String
+    Description: EC2 Key Pair for SSH access
+    Default: unia-test-key
+    
+  TestBucket:
+    Type: String
+    Description: S3 bucket for test results
+    Default: unia-test-results
+
+Resources:
+  # IAM Role for Test Instances
+  UniaTestRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+      Policies:
+        - PolicyName: UniaTestPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeInstances
+                  - ec2:DescribeTags
+                Resource: '*'
+  
+  # Instance Profile
+  UniaTestInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref UniaTestRole
+  
+  # Security Group
+  UniaTestSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for UNIA test instances
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub unia-test-sg-${TestRunId}
+        - Key: TestRunId
+          Value: !Ref TestRunId
+  
+  # Placement Group for Networking Tests
+  UniaTestPlacementGroup:
+    Type: AWS::EC2::PlacementGroup
+    Properties:
+      Strategy: cluster
+  
+  # S3 Bucket for Test Results (if it doesn't exist)
+  TestResultsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref TestBucket
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldResults
+            Status: Enabled
+            ExpirationInDays: 30
+  
+  # Console Test Instance - High End
+  ConsoleHighEndInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: g5.8xlarge
+      KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref UniaTestInstanceProfile
+      SecurityGroupIds:
+        - !Ref UniaTestSecurityGroup
+      ImageId: ami-placeholder # Replace with actual AMI ID
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 100
+            VolumeType: gp3
+        - DeviceName: /dev/sdb
+          Ebs:
+            VolumeSize: 1000
+            VolumeType: io2
+            Iops: 50000
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          mkdir -p /var/log/unia-tests
+          echo "Test Run ID: ${TestRunId}" > /var/log/unia-tests/instance-info.txt
+          echo "Profile: ConsoleHighEnd" >> /var/log/unia-tests/instance-info.txt
+          
+          # Install test dependencies
+          apt-get update
+          apt-get install -y awscli python3-pip
+          
+          # Download test scripts
+          aws s3 cp s3://${TestBucket}/scripts/ /opt/unia-tests/ --recursive
+          
+          # Make scripts executable
+          chmod +x /opt/unia-tests/*.sh
+          
+          # Set up test environment
+          /opt/unia-tests/setup_test_env.sh
+      Tags:
+        - Key: Name
+          Value: !Sub unia-console-high-${TestRunId}
+        - Key: TestRunId
+          Value: !Ref TestRunId
+        - Key: TestType
+          Value: Console
+        - Key: HardwareProfile
+          Value: NextGenHigh
+  
+  # Console Test Instance - Standard
+  ConsoleStandardInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: g5.4xlarge
+      KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref UniaTestInstanceProfile
+      SecurityGroupIds:
+        - !Ref UniaTestSecurityGroup
+      ImageId: ami-placeholder # Replace with actual AMI ID
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 100
+            VolumeType: gp3
+        - DeviceName: /dev/sdb
+          Ebs:
+            VolumeSize: 500
+            VolumeType: io2
+            Iops: 25000
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          mkdir -p /var/log/unia-tests
+          echo "Test Run ID: ${TestRunId}" > /var/log/unia-tests/instance-info.txt
+          echo "Profile: ConsoleStandard" >> /var/log/unia-tests/instance-info.txt
+          
+          # Install test dependencies
+          apt-get update
+          apt-get install -y awscli python3-pip
+          
+          # Download test scripts
+          aws s3 cp s3://${TestBucket}/scripts/ /opt/unia-tests/ --recursive
+          
+          # Make scripts executable
+          chmod +x /opt/unia-tests/*.sh
+          
+          # Set up test environment
+          /opt/unia-tests/setup_test_env.sh
+      Tags:
+        - Key: Name
+          Value: !Sub unia-console-std-${TestRunId}
+        - Key: TestRunId
+          Value: !Ref TestRunId
+        - Key: TestType
+          Value: Console
+        - Key: HardwareProfile
+          Value: NextGenStandard
+  
+  # AI Test Instance
+  AITestInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: g5.4xlarge # Using g5.4xlarge as p4d instances are expensive
+      KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref UniaTestInstanceProfile
+      SecurityGroupIds:
+        - !Ref UniaTestSecurityGroup
+      ImageId: ami-placeholder # Replace with actual AMI ID
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 100
+            VolumeType: gp3
+        - DeviceName: /dev/sdb
+          Ebs:
+            VolumeSize: 500
+            VolumeType: gp3
+            Iops: 16000
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          mkdir -p /var/log/unia-tests
+          echo "Test Run ID: ${TestRunId}" > /var/log/unia-tests/instance-info.txt
+          echo "Profile: AIEdge" >> /var/log/unia-tests/instance-info.txt
+          
+          # Install test dependencies
+          apt-get update
+          apt-get install -y awscli python3-pip
+          
+          # Download test scripts
+          aws s3 cp s3://${TestBucket}/scripts/ /opt/unia-tests/ --recursive
+          
+          # Make scripts executable
+          chmod +x /opt/unia-tests/*.sh
+          
+          # Set up test environment
+          /opt/unia-tests/setup_test_env.sh
+      Tags:
+        - Key: Name
+          Value: !Sub unia-ai-${TestRunId}
+        - Key: TestRunId
+          Value: !Ref TestRunId
+        - Key: TestType
+          Value: AI
+        - Key: AIProfile
+          Value: Edge
+  
+  # Graphics Test Instance
+  GraphicsTestInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: g5.8xlarge
+      KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref UniaTestInstanceProfile
+      SecurityGroupIds:
+        - !Ref UniaTestSecurityGroup
+      ImageId: ami-placeholder # Replace with actual AMI ID
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 100
+            VolumeType: gp3
+        - DeviceName: /dev/sdb
+          Ebs:
+            VolumeSize: 250
+            VolumeType: gp3
+            Iops: 16000
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          mkdir -p /var/log/unia-tests
+          echo "Test Run ID: ${TestRunId}" > /var/log/unia-tests/instance-info.txt
+          echo "Profile: GraphicsStandard" >> /var/log/unia-tests/instance-info.txt
+          
+          # Install test dependencies
+          apt-get update
+          apt-get install -y awscli python3-pip
+          
+          # Download test scripts
+          aws s3 cp s3://${TestBucket}/scripts/ /opt/unia-tests/ --recursive
+          
+          # Make scripts executable
+          chmod +x /opt/unia-tests/*.sh
+          
+          # Set up test environment
+          /opt/unia-tests/setup_test_env.sh
+      Tags:
+        - Key: Name
+          Value: !Sub unia-graphics-${TestRunId}
+        - Key: TestRunId
+          Value: !Ref TestRunId
+        - Key: TestType
+          Value: Graphics
+        - Key: GraphicsProfile
+          Value: Standard
+  
+  # Network Test Instance
+  NetworkTestInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: c6i.8xlarge
+      KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref UniaTestInstanceProfile
+      SecurityGroupIds:
+        - !Ref UniaTestSecurityGroup
+      ImageId: ami-placeholder # Replace with actual AMI ID
+      PlacementGroupName: !Ref UniaTestPlacementGroup
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 100
+            VolumeType: gp3
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          mkdir -p /var/log/unia-tests
+          echo "Test Run ID: ${TestRunId}" > /var/log/unia-tests/instance-info.txt
+          echo "Profile: MeshNetwork" >> /var/log/unia-tests/instance-info.txt
+          
+          # Install test dependencies
+          apt-get update
+          apt-get install -y awscli python3-pip
+          
+          # Download test scripts
+          aws s3 cp s3://${TestBucket}/scripts/ /opt/unia-tests/ --recursive
+          
+          # Make scripts executable
+          chmod +x /opt/unia-tests/*.sh
+          
+          # Set up test environment
+          /opt/unia-tests/setup_test_env.sh
+      Tags:
+        - Key: Name
+          Value: !Sub unia-network-${TestRunId}
+        - Key: TestRunId
+          Value: !Ref TestRunId
+        - Key: TestType
+          Value: Network
+        - Key: NetworkProfile
+          Value: Mesh
+  
+  # Game Engine Test Instance
+  GameEngineTestInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: g5.8xlarge
+      KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref UniaTestInstanceProfile
+      SecurityGroupIds:
+        - !Ref UniaTestSecurityGroup
+      ImageId: ami-placeholder # Replace with actual AMI ID
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 100
+            VolumeType: gp3
+        - DeviceName: /dev/sdb
+          Ebs:
+            VolumeSize: 500
+            VolumeType: io2
+            Iops: 25000
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          mkdir -p /var/log/unia-tests
+          echo "Test Run ID: ${TestRunId}" > /var/log/unia-tests/instance-info.txt
+          echo "Profile: UnrealEngine" >> /var/log/unia-tests/instance-info.txt
+          
+          # Install test dependencies
+          apt-get update
+          apt-get install -y awscli python3-pip
+          
+          # Download test scripts
+          aws s3 cp s3://${TestBucket}/scripts/ /opt/unia-tests/ --recursive
+          
+          # Make scripts executable
+          chmod +x /opt/unia-tests/*.sh
+          
+          # Set up test environment
+          /opt/unia-tests/setup_test_env.sh
+      Tags:
+        - Key: Name
+          Value: !Sub unia-engine-${TestRunId}
+        - Key: TestRunId
+          Value: !Ref TestRunId
+        - Key: TestType
+          Value: GameEngine
+        - Key: Engine
+          Value: Unreal
+
+Outputs:
+  ConsoleHighEndInstanceId:
+    Description: ID of the high-end console test instance
+    Value: !Ref ConsoleHighEndInstance
+    
+  ConsoleStandardInstanceId:
+    Description: ID of the standard console test instance
+    Value: !Ref ConsoleStandardInstance
+    
+  AITestInstanceId:
+    Description: ID of the AI test instance
+    Value: !Ref AITestInstance
+    
+  GraphicsTestInstanceId:
+    Description: ID of the graphics test instance
+    Value: !Ref GraphicsTestInstance
+    
+  NetworkTestInstanceId:
+    Description: ID of the network test instance
+    Value: !Ref NetworkTestInstance
+    
+  GameEngineTestInstanceId:
+    Description: ID of the game engine test instance
+    Value: !Ref GameEngineTestInstance
+    
+  TestResultsBucket:
+    Description: S3 bucket for test results
+    Value: !Ref TestResultsBucket
