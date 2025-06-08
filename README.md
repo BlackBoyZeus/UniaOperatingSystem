@@ -220,8 +220,8 @@ UNIA is an open-source project that welcomes contributions from the community. P
 
 - [Architecture Overview](documentation/architecture/README.md)
 - [AI Framework](documentation/ai-framework/README.md)
-- [Developer Guide](documentation/developer/README.md)
-- [API Reference](documentation/api/README.md)
+- [Developer Guide](documentation/developer/README.md) --- coming soon.
+- [API Reference](documentation/api/README.md) -- coming soon.
 
 ## License
 
@@ -229,8 +229,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Community
 
-- [Discord Server](https://discord.gg/unia-os)
-- [Developer Forum](https://forum.unia-os.org)
+- [Discord Server](https://discord.com/channels/1279930185856188446/1381339248166441042)
+#- [Developer Forum](https://forum.unia-os.org) --- coming soon | feel free to contribute one!
 - [Contribution Guidelines](CONTRIBUTING.md)
 
 ## Acknowledgments
