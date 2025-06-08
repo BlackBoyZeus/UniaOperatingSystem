@@ -3,6 +3,8 @@ name = "simple_ai_game"
 version = "0.1.0"
 edition = "2021"
 description = "Simple AI game example for UNIA Operating System"
+authors = ["UNIA Development Team"]
+license = "MIT"
 
 [dependencies]
 unia_core = { path = "../../src/core" }
