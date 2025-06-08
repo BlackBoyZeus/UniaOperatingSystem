@@ -1,5 +1,7 @@
 # UNIA: Open Source AI Gaming Operating System
 
+{Unified Neural Interface Architecture} 
+
 A revolutionary open-source operating system specifically designed for AI-powered gaming experiences, integrating real-time LiDAR scanning, mesh networking, advanced AI capabilities, and comprehensive developer tools.
 
 ## Vision
