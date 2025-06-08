@@ -2,19 +2,16 @@
 name = "simple_ai_game"
 version = "0.1.0"
 edition = "2021"
-authors = ["UNIA Team"]
-description = "A simple game using UNIA AI Core"
+description = "Simple AI game example for UNIA Operating System"
+authors = ["UNIA Development Team"]
+license = "MIT"
 
 [dependencies]
-unia_ai_core = { path = "../../src/ai_core" }
-tokio = { version = "1.28", features = ["full"] }
-anyhow = "1.0.71"
-clap = "3.2.25"
-serde = { version = "1.0.163", features = ["derive"] }
-serde_json = "1.0.96"
+unia_core = { path = "../../src/core" }
+unia_ai = { path = "../../src/ai_core" }
+unia_graphics = { path = "../../src/graphics" }
+noise = "0.8.2"
 rand = "0.8.5"
-ctrlc = "3.2.5"
 
-[[bin]]
-name = "simple_ai_game"
-path = "main.rs"
+[build-dependencies]
+cmake = "0.1.50"
