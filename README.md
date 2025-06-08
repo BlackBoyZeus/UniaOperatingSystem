@@ -229,7 +229,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Community
 
-- [Discord Server](https://discord.gg/unia-os)
+- [Discord Server](https://discord.com/channels/1279930185856188446/1381339248166441042)
 - [Developer Forum](https://forum.unia-os.org)
 - [Contribution Guidelines](CONTRIBUTING.md)
 
