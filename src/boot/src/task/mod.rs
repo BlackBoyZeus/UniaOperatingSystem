@@ -8,6 +8,7 @@ use core::{
     pin::Pin,
     task::{Context, Poll},
 };
+use core::sync::atomic::{AtomicU64, Ordering};
 
 pub struct Task {
     future: Pin<Box<dyn Future<Output = ()>>>,
@@ -23,4 +24,27 @@ impl Task {
     fn poll(&mut self, context: &mut Context) -> Poll<()> {
         self.future.as_mut().poll(context)
     }
+}
+
+// Simple yield implementation
+pub async fn yield_now() {
+    struct YieldNow {
+        yielded: bool,
+    }
+
+    impl Future for YieldNow {
+        type Output = ();
+
+        fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+            if self.yielded {
+                Poll::Ready(())
+            } else {
+                self.yielded = true;
+                cx.waker().wake_by_ref();
+                Poll::Pending
+            }
+        }
+    }
+
+    YieldNow { yielded: false }.await;
 }
