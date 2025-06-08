@@ -220,8 +220,8 @@ UNIA is an open-source project that welcomes contributions from the community. P
 
 - [Architecture Overview](documentation/architecture/README.md)
 - [AI Framework](documentation/ai-framework/README.md)
-- [Developer Guide](documentation/developer/README.md)
-- [API Reference](documentation/api/README.md)
+- [Developer Guide](documentation/developer/README.md) --- coming soon.
+- [API Reference](documentation/api/README.md) -- coming soon.
 
 ## License
 
