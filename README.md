@@ -1,73 +1,114 @@
-# TALD UNIA Platform
+# UNIA: Open Source AI Gaming Operating System
 
-A revolutionary handheld gaming platform integrating real-time LiDAR scanning, mesh networking, and AI-driven features for immersive mixed-reality gaming experiences.
+A revolutionary open-source operating system specifically designed for AI-powered gaming experiences, integrating real-time LiDAR scanning, mesh networking, advanced AI capabilities, and comprehensive developer tools.
 
-## Overview
+## Vision
 
-TALD UNIA is a cutting-edge gaming platform built on a custom FreeBSD-based operating system that enables seamless interaction between physical and virtual environments. Supporting fleet-based multiplayer gaming for up to 32 concurrent devices, it delivers unparalleled mixed-reality experiences through:
+UNIA is an open-source operating system that serves as the foundation for the future of AI gaming. It combines cutting-edge hardware integration with powerful AI capabilities to create immersive, intelligent gaming experiences that blur the line between physical and virtual worlds.
 
-- 30Hz LiDAR scanning with 0.01cm resolution and 5-meter range
-- WebRTC-based mesh networking with <50ms latency
-- Vulkan 1.3-based rendering with edge computing optimization
-- TensorRT 8.6 AI acceleration for enhanced gameplay
-- CRDT-based state synchronization for reliable multiplayer
+Key principles:
+- **Open Source**: Community-driven development with transparent governance
+- **AI-First**: Deep integration of AI at every level of the system
+- **Hardware Agnostic**: Support for diverse gaming hardware platforms
+- **Developer Friendly**: Comprehensive tools and APIs for game creators
+- **Privacy Focused**: Local processing prioritized over cloud dependencies
 
-## System Requirements
+## Core Features
 
-### Development Environment
+### Advanced AI Gaming Infrastructure
+- **Sophisticated NPC Behaviors**: Complex behavior trees for lifelike non-player characters
+- **Procedural Content Generation**: AI-driven world creation with realistic terrain and features
+- **Player Modeling with ML**: Machine learning systems that understand and adapt to player preferences
+- **Hardware-Accelerated AI**: Support for CUDA, OpenCL, Vulkan Compute, and custom NPUs
+- **Distributed AI Processing**: Efficient AI workload distribution across multiple devices
 
-#### Backend
-- Node.js >= 18.0.0
-- npm >= 9.0.0
-- Redis ^4.6.0
-- AWS SDK ^2.1400.0
+### Mixed Reality Platform
+- **LiDAR Integration**: 30Hz scanning with 0.01cm resolution for physical mapping
+- **Spatial Understanding**: Real-time environment analysis and object recognition
+- **Physical-Digital Fusion**: Seamless blending of real and virtual elements
+- **Contextual Awareness**: Games that understand and adapt to physical spaces
+- **Multi-device Coordination**: Synchronized experiences across multiple devices
 
-#### FreeBSD Core
-- GCC 12.0
-- LLVM 15.0
-- CUDA 12.0
-- Vulkan 1.3
-- TensorRT 8.6
+### Enhanced Networking & Multiplayer
+- **Advanced CRDT Implementation**: Robust conflict-free replicated data types for state synchronization
+- **NAT Traversal**: Sophisticated techniques for establishing peer-to-peer connections
+- **Mesh Networking**: WebRTC-based P2P communication with <50ms latency
+- **Fleet Gaming**: Support for up to 32 concurrent devices in shared experiences
+- **Security Features**: Encrypted communications and anti-cheat measures
 
-#### Frontend
-- Node.js >= 18.0.0
-- npm >= 9.0.0
-- TypeScript ^5.0.0
-- React ^18.0.0
+### Developer Platform
+- **Content Creation Tools**: AI-assisted asset generation and game design
+- **Unified SDK**: Comprehensive tools for game development
+- **Cross-platform Support**: Deploy to multiple hardware targets
+- **Performance Profiling**: Advanced metrics and optimization tools
+- **Community Marketplace**: Ecosystem for sharing components and assets
 
-### Production Hardware
-- LiDAR: 30Hz scanning capability
-- GPU: Vulkan 1.3 compatible
-- Network: Mesh networking support
-- Memory: ≥4GB RAM
-- Storage: ≥32GB
+### System Optimization
+- **Power Management**: Sophisticated power profiles for mobile devices
+- **Dynamic Resource Allocation**: Intelligent distribution of system resources
+- **Thermal Management**: Advanced cooling strategies for sustained performance
+- **Memory Optimization**: Efficient memory usage for complex AI workloads
+- **Battery Awareness**: Adaptive performance based on battery status
 
-## Architecture
+## System Architecture
 
-TALD UNIA implements a hybrid architecture combining edge computing with distributed systems:
+UNIA implements a layered architecture designed for flexibility and performance:
+
+```
+┌─────────────────────────────────────────────┐
+│               Applications                  │
+│  Games | Tools | Utilities | Social Platform│
+├─────────────┬───────────────┬───────────────┤
+│ AI          │ Graphics      │ Physics       │
+│ Framework   │ Engine        │ Engine        │
+├─────────────┼───────────────┼───────────────┤
+│ Sensor      │ Networking    │ Audio         │
+│ Processing  │ Stack         │ System        │
+├─────────────┴───────────────┴───────────────┤
+│              Core OS (FreeBSD)              │
+├─────────────────────────────────────────────┤
+│              Hardware Abstraction           │
+└─────────────────────────────────────────────┘
+```
 
 ### Core Components
-1. LiDAR Processing Pipeline
-   - 30Hz continuous scanning
-   - Real-time point cloud processing
-   - Environment mesh generation
 
-2. Mesh Networking Infrastructure
-   - 32-device fleet support
-   - WebRTC-based P2P communication
-   - CRDT-based state synchronization
+1. **AI Framework**
+   - Advanced behavior tree system for complex NPC behaviors
+   - Machine learning-based player modeling
+   - Procedural content generation with AI-driven feature placement
+   - Hardware acceleration for AI operations (CUDA, OpenCL, Vulkan)
+   - Distributed AI processing across device fleets
 
-3. Game Engine
-   - Vulkan 1.3-based rendering
-   - Edge computing optimization
-   - Real-time physics simulation
+2. **Sensor Processing**
+   - LiDAR point cloud processing pipeline
+   - Computer vision for environmental understanding
+   - Sensor fusion for accurate spatial mapping
+   - Motion and gesture recognition
 
-4. Social Platform
-   - Proximity-based discovery
-   - Fleet formation/management
-   - Real-time communication
+3. **Graphics Engine**
+   - Vulkan 1.3-based rendering pipeline
+   - Mixed reality composition system
+   - Dynamic lighting and shadow processing
+   - Optimized for mobile GPU architectures
+
+4. **Networking Stack**
+   - Advanced CRDT implementation for state synchronization
+   - NAT traversal for peer-to-peer connections
+   - WebRTC-based mesh networking
+   - Security features for multiplayer gaming
+   - Latency compensation techniques
+
+5. **Core OS**
+   - Custom FreeBSD-based operating system
+   - Real-time scheduling for gaming workloads
+   - Memory management optimized for AI processing
+   - Power management for mobile devices
+   - Security-focused design with hardware isolation
 
 ## Getting Started
+
+### Development Environment Setup
 
 1. Install Prerequisites
 ```bash
@@ -86,8 +127,8 @@ tar xf vulkan-sdk.tar.gz
 
 2. Clone Repository
 ```bash
-git clone https://github.com/your-org/tald-unia.git
-cd tald-unia
+git clone https://github.com/BlackBoyZeus/UniaOperatingSystem.git
+cd UniaOperatingSystem
 ```
 
 3. Build Project
@@ -97,78 +138,101 @@ cmake ..
 make -j$(nproc)
 ```
 
-## Development
+### System Requirements
 
-### Coding Standards
+#### Development Hardware
+- CPU: 8+ cores recommended
+- GPU: CUDA-compatible with 8GB+ VRAM
+- RAM: 16GB+ recommended
+- Storage: 100GB+ SSD
+
+#### Target Hardware
+- LiDAR: 30Hz scanning capability
+- GPU: Vulkan 1.3 compatible
+- Network: Mesh networking support
+- Memory: ≥4GB RAM
+- Storage: ≥32GB
+
+## Example Games
+
+### Simple AI Game
+A basic example demonstrating core AI features:
+- NPC behavior using behavior trees
+- Day/night cycle affecting NPC behavior
+- Player stats and inventory system
+- Combat and crafting mechanics
+
+### Advanced AI Game
+A more complex example showcasing the full capabilities:
+- Advanced NPC behaviors with memory and relationships
+- Procedurally generated world with AI-driven feature placement
+- Player modeling with machine learning adaptation
+- Multiplayer support with CRDT-based state synchronization
+- Power management optimization for mobile devices
+
+## Development Roadmap
+
+### Current Status
+- Core OS implementation based on FreeBSD
+- Advanced behavior tree system for NPC AI
+- Procedural terrain generation with AI features
+- Machine learning-based player modeling
+- Hardware acceleration for AI operations
+- NAT traversal for peer-to-peer networking
+- Advanced CRDT implementation for state synchronization
+- Power management for mobile devices
+- Developer tools for content creators
+
+### Next Steps
+- Expand AI capabilities with more sophisticated models
+- Enhance hardware acceleration for more AI operations
+- Improve security features for multiplayer gaming
+- Create more comprehensive developer tools
+- Build a community marketplace for assets and components
+
+## Contributing
+
+UNIA is an open-source project that welcomes contributions from the community. Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and development process.
+
+### Development Guidelines
 - C++20 for core systems
-- Rust for networking components
+- Rust for networking components and AI framework
 - TypeScript for frontend
 - Follow project-specific style guides
 
 ### Testing Requirements
 - Unit tests required for all components
 - Integration tests for system interfaces
-- Performance benchmarks must meet targets:
-  - Scan Processing: ≤50ms at 30Hz
-  - Network Latency: ≤50ms P2P
-  - Frame Rate: ≥60 FPS
-  - Fleet Size: 32 devices
-  - Battery Life: ≥4 hours
-
-## Deployment
-
-### Build Pipeline
-```mermaid
-flowchart LR
-    A[Source] --> B[Build]
-    B --> C[Test]
-    C --> D[Package]
-    D --> E[Deploy]
-```
-
-### Environments
-- Development: Continuous integration
-- Staging: Daily releases
-- Production: Weekly releases
-
-## Contributing
-
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and development process.
-
-### Pull Request Process
-1. Update documentation
-2. Add/update tests
-3. Follow coding standards
-4. Obtain reviewer approval
-
-## Security
-
-- OAuth 2.0 + JWT authentication
-- Hardware-backed security features
-- TLS 1.3 encryption
-- Regular security audits
-
-## License
-
-This project is licensed under the terms in [LICENSE](LICENSE) file.
+- Performance benchmarks must meet targets
 
 ## Performance Targets
 
-| Metric | Target | Current |
-|--------|---------|---------|
-| Scan Processing | ≤50ms | 45ms |
-| Network Latency | ≤50ms | 48ms |
-| Frame Rate | ≥60 FPS | 60 FPS |
-| Fleet Size | 32 devices | 32 devices |
-| Battery Life | ≥4 hours | 4.2 hours |
-| User Rating | ≥4.5/5 | 4.5/5 |
+| Metric | Target |
+|--------|--------|
+| Scan Processing | ≤50ms at 30Hz |
+| Network Latency | ≤50ms P2P |
+| Frame Rate | ≥60 FPS |
+| Fleet Size | 32 devices |
+| AI Response Time | ≤16ms |
+| Battery Impact | ≤20% increase |
 
-## Documentation References
+## Documentation
 
-- [Backend Documentation](src/backend/README.md)
-- [FreeBSD Documentation](src/freebsd/README.md)
-- [Web Documentation](src/web/README.md)
+- [Architecture Overview](documentation/architecture/README.md)
+- [AI Framework](documentation/ai-framework/README.md)
+- [Developer Guide](documentation/developer/README.md)
+- [API Reference](documentation/api/README.md)
 
-## Support
+## License
 
-For support and questions, please file an issue in the GitHub repository.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Community
+
+- [Discord Server](https://discord.gg/unia-os)
+- [Developer Forum](https://forum.unia-os.org)
+- [Contribution Guidelines](CONTRIBUTING.md)
+
+## Acknowledgments
+
+UNIA builds upon numerous open-source projects and research in AI, gaming, and operating systems. We are grateful to the broader open-source community for making this project possible.
