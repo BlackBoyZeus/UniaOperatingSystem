@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UNIA OS Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #111827;
+            color: white;
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+        .transition-all {
+            transition: all 0.2s ease;
+        }
+    </style>
+</head>
+<body>
+    <!-- Main Container -->
+    <div class="flex h-screen w-screen bg-gray-900 text-white font-sans">
+
+        <!-- Sidebar -->
+        <aside class="w-64 bg-gray-800 p-4 space-y-4 border-r border-gray-700">
+            <div class="text-xl font-bold tracking-wide">UNIA OS</div>
+            <nav class="space-y-2">
+                <button class="w-full text-left px-4 py-2 bg-gray-700 rounded hover:bg-gray-600 transition-all">Dashboard</button>
+                <button class="w-full text-left px-4 py-2 rounded hover:bg-gray-600 transition-all">Game Engine</button>
+                <button class="w-full text-left px-4 py-2 rounded hover:bg-gray-600 transition-all">AI System</button>
+                <button class="w-full text-left px-4 py-2 rounded hover:bg-gray-600 transition-all">Networking</button>
+                <button class="w-full text-left px-4 py-2 rounded hover:bg-gray-600 transition-all">Settings</button>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-y-auto p-6 space-y-6">
+
+            <!-- Header -->
+            <header class="flex justify-between items-center">
+                <h1 class="text-3xl font-semibold">System Dashboard</h1>
+                <div class="flex items-center space-x-4">
+                    <input type="text" placeholder="Search..." class="bg-gray-700 px-4 py-2 rounded text-sm placeholder-gray-400">
+                    <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                        <span class="font-bold">U</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Stats Cards -->
+            <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-gray-800 p-4 rounded-xl shadow hover:shadow-lg transition-all">
+                    <h2 class="text-lg font-semibold">CPU Usage</h2>
+                    <p class="text-3xl mt-2 font-bold">24%</p>
+                </div>
+                <div class="bg-gray-800 p-4 rounded-xl shadow hover:shadow-lg transition-all">
+                    <h2 class="text-lg font-semibold">Memory</h2>
+                    <p class="text-3xl mt-2 font-bold">1.2 GB</p>
+                </div>
+                <div class="bg-gray-800 p-4 rounded-xl shadow hover:shadow-lg transition-all">
+                    <h2 class="text-lg font-semibold">Network</h2>
+                    <p class="text-3xl mt-2 font-bold">5.4 Mbps</p>
+                </div>
+            </section>
+
+            <!-- Chart Section -->
+            <section class="bg-gray-800 p-6 rounded-xl">
+                <h2 class="text-xl font-semibold mb-4">System Performance</h2>
+                <div class="w-full h-64 bg-gray-700 rounded flex items-center justify-center text-gray-400">
+                    <canvas id="performanceChart" width="800" height="200"></canvas>
+                </div>
+            </section>
+
+            <!-- Recent Activity -->
+            <section class="bg-gray-800 p-6 rounded-xl">
+                <h2 class="text-xl font-semibold mb-4">System Activity</h2>
+                <ul class="divide-y divide-gray-700">
+                    <li class="py-2">🔄 System initialization complete</li>
+                    <li class="py-2">🧠 AI subsystem initialized</li>
+                    <li class="py-2">🌐 Mesh networking initialized</li>
+                    <li class="py-2">🎮 Game engine initialized</li>
+                    <li class="py-2">🤖 NPC behavior trees loaded</li>
+                </ul>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Initialize performance chart
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        const performanceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array.from({length: 30}, (_, i) => i),
+                datasets: [{
+                    label: 'CPU',
+                    data: Array.from({length: 30}, () => Math.floor(Math.random() * 40) + 10),
+                    borderColor: 'rgba(59, 130, 246, 1)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }, {
+                    label: 'Memory',
+                    data: Array.from({length: 30}, () => Math.floor(Math.random() * 30) + 20),
+                    borderColor: 'rgba(16, 185, 129, 1)',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(75, 85, 99, 0.2)'
+                        },
+                        ticks: {
+                            color: 'rgba(156, 163, 175, 1)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            color: 'rgba(156, 163, 175, 1)'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: 'rgba(156, 163, 175, 1)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Simulate real-time updates
+        setInterval(() => {
+            performanceChart.data.datasets.forEach(dataset => {
+                dataset.data.shift();
+                if (dataset.label === 'CPU') {
+                    dataset.data.push(Math.floor(Math.random() * 40) + 10);
+                } else {
+                    dataset.data.push(Math.floor(Math.random() * 30) + 20);
+                }
+            });
+            performanceChart.update();
+        }, 2000);
+    </script>
+</body>
+</html>

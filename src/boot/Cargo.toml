@@ -1,0 +1,55 @@
+[package]
+name = "unia-os-bootable"
+version = "0.1.0"
+edition = "2021"
+authors = ["UNIA OS Team"]
+description = "Bootable experience for UNIA Operating System"
+
+[dependencies]
+bootloader = "0.9.23"
+x86_64 = "0.14.10"
+uart_16550 = "0.2.18"
+spin = "0.9.8"
+pic8259 = "0.10.4"
+pc-keyboard = "0.7.0"
+linked_list_allocator = "0.10.5"
+embedded-graphics = "0.8.0"
+tinybmp = "0.5.0"
+vga = "0.2.9"
+lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
+crossbeam-queue = { version = "0.3.8", default-features = false, features = ["alloc"] }
+conquer-once = { version = "0.4.0", default-features = false }
+futures-util = { version = "0.3.28", default-features = false, features = ["alloc"] }
+wasm-bindgen = "0.2.87"
+web-sys = { version = "0.3.64", features = [
+    "Document", 
+    "Element", 
+    "HtmlElement", 
+    "Node", 
+    "Window",
+    "HtmlCanvasElement",
+    "CanvasRenderingContext2d"
+]}
+
+[dependencies.futures-executor]
+version = "0.3.28"
+default-features = false
+features = ["alloc"]
+
+[package.metadata.bootimage]
+test-args = [
+    "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",
+    "-serial", "stdio",
+    "-display", "none"
+]
+test-success-exit-code = 33
+test-timeout = 300
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+lto = true
+codegen-units = 1
+opt-level = 3
