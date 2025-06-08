@@ -206,6 +206,10 @@ make -j$(nproc)
 UNIA OS can be run as a standalone operating system:
 
 ```bash
+# Quick start - automatically builds and runs UNIA OS
+./run_unia_os.sh
+
+# Or manually:
 # Navigate to the boot directory
 cd src/boot
 
@@ -216,7 +220,7 @@ cd src/boot
 qemu-system-x86_64 -drive format=raw,file=target/x86_64-unia/debug/bootimage-unia-os-bootable.bin
 ```
 
-For detailed instructions, see the [Bootable Experience Guide](./docs/bootable-experience-guide.md).
+For detailed instructions, see the [Running UNIA OS Guide](./docs/running-unia-os.md) and [Bootable Experience Guide](./docs/bootable-experience-guide.md).
 
 ### System Requirements
 
@@ -303,6 +307,7 @@ UNIA is an open-source project that welcomes contributions from the community. P
 - [Developer Guide](documentation/developer/README.md) --- coming soon.
 - [API Reference](documentation/api/README.md) -- coming soon.
 - [Bootable Experience Guide](./docs/bootable-experience-guide.md)
+- [Running UNIA OS](./docs/running-unia-os.md)
 - [Cloud Testing Infrastructure](./testing/cloud_simulation/README.md)
 
 ## License
