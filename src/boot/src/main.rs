@@ -15,31 +15,21 @@ use unia_os_bootable::{
 entry_point!(kernel_main);
 
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
-    println!("UNIA OS Kernel Starting...");
-    
-    // Initialize the OS components
+    // Initialize the OS components first
     unia_os_bootable::init();
-    println!("Basic initialization complete");
     
-    // Initialize early allocator for boot sequence
-    println!("Initializing early allocator...");
-    allocator::init_early_allocator();
-    
-    // Run the boot sequence animation
-    println!("Starting boot sequence...");
-    boot_sequence::run_boot_sequence();
-    println!("Boot sequence completed");
-    
-    // Initialize memory management
-    println!("Initializing memory management...");
+    // Initialize memory management immediately
     let phys_mem_offset = boot_info.physical_memory_offset;
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
     let mut frame_allocator = unsafe {
         memory::BootInfoFrameAllocator::init(&boot_info.memory_map)
     };
+    
+    // Now it's safe to print
+    println!("UNIA OS Kernel Starting...");
     println!("Memory management initialized");
     
-    // Initialize the main heap allocator
+    // Initialize the heap
     println!("Initializing heap...");
     match allocator::init_heap(&mut mapper, &mut frame_allocator) {
         Ok(_) => println!("Heap initialization successful"),
@@ -48,6 +38,11 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
             panic!("Failed to initialize heap");
         }
     }
+    
+    // Run the boot sequence animation
+    println!("Starting boot sequence...");
+    boot_sequence::run_boot_sequence();
+    println!("Boot sequence completed");
     
     // Initialize console after heap is ready
     println!("Initializing console...");

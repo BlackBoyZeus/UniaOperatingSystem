@@ -1,87 +1,63 @@
 use core::alloc::{GlobalAlloc, Layout};
 use core::ptr::null_mut;
-use linked_list_allocator::LockedHeap;
-use spin::Mutex;
+use core::sync::atomic::{AtomicUsize, Ordering};
 use x86_64::{
-    structures::paging::{mapper::MapToError, FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB},
+    structures::paging::{
+        mapper::MapToError, FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB,
+    },
     VirtAddr,
 };
 
-// Increase heap size to 1 MiB
+// Static buffer for early allocations (128KB should be enough for boot)
+static mut EARLY_HEAP_BUFFER: [u8; 131072] = [0; 131072];
+static EARLY_HEAP_NEXT: AtomicUsize = AtomicUsize::new(0);
+
+// Heap configuration
 pub const HEAP_START: usize = 0x_4444_4444_0000;
 pub const HEAP_SIZE: usize = 1024 * 1024; // 1 MiB
 
-// Bump allocator for early boot
-pub struct BumpAllocator {
-    heap_start: usize,
-    heap_end: usize,
-    next: usize,
-    allocations: usize,
-}
+// Simple allocator that uses a static buffer
+pub struct SimpleAllocator;
 
-impl BumpAllocator {
-    pub const fn new() -> Self {
-        BumpAllocator {
-            heap_start: 0,
-            heap_end: 0,
-            next: 0,
-            allocations: 0,
-        }
-    }
-
-    pub unsafe fn init(&mut self, heap_start: usize, heap_size: usize) {
-        self.heap_start = heap_start;
-        self.heap_end = heap_start + heap_size;
-        self.next = heap_start;
-    }
-}
-
-unsafe impl GlobalAlloc for BumpAllocator {
+unsafe impl GlobalAlloc for SimpleAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        let mut next = self.next;
+        // Simple bump allocation from static buffer
+        let align = layout.align();
+        let size = layout.size();
         
-        // Align the allocation address
-        let alloc_start = align_up(next, layout.align());
-        let alloc_end = match alloc_start.checked_add(layout.size()) {
+        // Get current position and align it
+        let current = EARLY_HEAP_NEXT.load(Ordering::Relaxed);
+        let aligned_start = align_up(current, align);
+        let end = match aligned_start.checked_add(size) {
             Some(end) => end,
             None => return null_mut(), // Overflow
         };
-
-        if alloc_end > self.heap_end {
-            // Out of memory
-            null_mut()
-        } else {
-            // Update the next allocation position
-            next = alloc_end;
-            self.next = next;
-            self.allocations += 1;
-            alloc_start as *mut u8
+        
+        // Check if we have enough space
+        if end <= EARLY_HEAP_BUFFER.len() {
+            // Update the next position atomically
+            if EARLY_HEAP_NEXT.compare_exchange(
+                current, end, Ordering::SeqCst, Ordering::SeqCst
+            ).is_ok() {
+                // Return pointer to the allocated memory
+                return EARLY_HEAP_BUFFER.as_mut_ptr().add(aligned_start);
+            }
         }
+        
+        // Out of memory or CAS failed
+        null_mut()
     }
 
     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
-        // No deallocation support in bump allocator
+        // No deallocation support in this simple allocator
     }
 }
 
-// Early boot allocator
-static BUMP_ALLOCATOR: Mutex<BumpAllocator> = Mutex::new(BumpAllocator::new());
-
-// Main allocator for after heap initialization
+// Register our simple allocator as the global allocator
 #[global_allocator]
-static ALLOCATOR: BumpAllocator = BumpAllocator::new();
+static ALLOCATOR: SimpleAllocator = SimpleAllocator;
 
-// Initialize the early boot allocator
-pub fn init_early_allocator() {
-    unsafe {
-        // Initialize the global allocator directly
-        let mut allocator = ALLOCATOR;
-        allocator.init(HEAP_START, HEAP_SIZE);
-    }
-    crate::println!("Early allocator initialized at 0x{:x} with size {} bytes", HEAP_START, HEAP_SIZE);
-}
-
-// Initialize the main heap allocator
+// Initialize the heap by mapping pages
 pub fn init_heap(
     mapper: &mut impl Mapper<Size4KiB>,
     frame_allocator: &mut impl FrameAllocator<Size4KiB>,
@@ -116,43 +92,4 @@ pub fn init_heap(
 // Utility function to align addresses
 fn align_up(addr: usize, align: usize) -> usize {
     (addr + align - 1) & !(align - 1)
-}
-
-// Locked wrapper (unchanged)
-pub struct Locked<A> {
-    inner: spin::Mutex<A>,
-}
-
-impl<A> Locked<A> {
-    pub const fn new(inner: A) -> Self {
-        Locked {
-            inner: spin::Mutex::new(inner),
-        }
-    }
-
-    pub fn lock(&self) -> spin::MutexGuard<A> {
-        self.inner.lock()
-    }
-}
-
-// Utility function to align addresses
-fn align_up(addr: usize, align: usize) -> usize {
-    (addr + align - 1) & !(align - 1)
-}
-
-// Locked wrapper (unchanged)
-pub struct Locked<A> {
-    inner: spin::Mutex<A>,
-}
-
-impl<A> Locked<A> {
-    pub const fn new(inner: A) -> Self {
-        Locked {
-            inner: spin::Mutex::new(inner),
-        }
-    }
-
-    pub fn lock(&self) -> spin::MutexGuard<A> {
-        self.inner.lock()
-    }
 }
