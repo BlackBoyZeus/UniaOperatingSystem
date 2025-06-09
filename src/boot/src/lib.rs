@@ -11,7 +11,6 @@ extern crate alloc;
 pub mod allocator;
 pub mod boot_sequence;
 pub mod console;
-pub mod debug;
 pub mod gdt;
 pub mod interrupts;
 pub mod memory;
@@ -119,9 +118,6 @@ fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
     if !is_heap_initialized() {
         serial_println!("Heap not initialized yet!");
     }
-    
-    // Print register state
-    debug::print_register_state();
     
     panic!(
         "Allocation error: {:?} - size: {}, align: {}",

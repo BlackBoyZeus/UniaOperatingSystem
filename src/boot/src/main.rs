@@ -9,20 +9,60 @@ extern crate alloc;
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
 use unia_os_bootable::{
-    allocator, debug, hlt_loop, memory, println, serial_println
+    allocator, hlt_loop, memory, println, serial_println
 };
 
 entry_point!(kernel_main);
 
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
-    // Initialize the OS components first - minimal initialization
+    // Direct VGA buffer manipulation (no allocations)
+    unsafe {
+        let vga_buffer = 0xb8000 as *mut u8;
+        let message = b"UNIA OS Starting...";
+        
+        for (i, &byte) in message.iter().enumerate() {
+            *vga_buffer.add(i * 2) = byte;
+            *vga_buffer.add(i * 2 + 1) = 0x0F; // White on black
+        }
+    }
+    
+    // Initialize serial port directly (no allocations)
+    unsafe {
+        let serial_port = 0x3F8 as *mut u8;
+        // Initialize serial port
+        *serial_port.add(1) = 0x00; // Disable interrupts
+        *serial_port.add(3) = 0x80; // Enable DLAB
+        *serial_port.add(0) = 0x03; // Set divisor to 3 (38400 baud)
+        *serial_port.add(1) = 0x00; // High byte of divisor
+        *serial_port.add(3) = 0x03; // 8 bits, no parity, one stop bit
+        *serial_port.add(2) = 0xC7; // Enable FIFO, clear them, 14-byte threshold
+        *serial_port.add(4) = 0x0B; // IRQs enabled, RTS/DSR set
+        
+        // Write a message to serial
+        let message = b"UNIA OS Serial Initialized\n";
+        for &byte in message {
+            // Wait for transmit buffer to be empty
+            while (*serial_port.add(5) & 0x20) == 0 {}
+            // Send the byte
+            *serial_port.add(0) = byte;
+        }
+    }
+    
+    // Initialize the heap first
+    serial_println!("Initializing heap...");
+    match allocator::init_heap() {
+        Ok(_) => serial_println!("Heap initialization successful"),
+        Err(e) => {
+            serial_println!("Heap initialization failed: {}", e);
+            panic!("Failed to initialize heap");
+        }
+    }
+    
+    // Initialize basic OS components
     unia_os_bootable::init();
+    serial_println!("Basic initialization complete");
     
-    // Print debug information
-    serial_println!("=== UNIA OS MINIMAL KERNEL ===");
-    serial_println!("Starting with minimal initialization");
-    
-    // Initialize memory management immediately
+    // Initialize memory management
     let phys_mem_offset = boot_info.physical_memory_offset;
     serial_println!("Physical memory offset: 0x{:x}", phys_mem_offset);
     
@@ -30,23 +70,13 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     let mut frame_allocator = unsafe {
         memory::BootInfoFrameAllocator::init(&boot_info.memory_map)
     };
+    serial_println!("Memory management initialized");
     
-    // Now it's safe to print to VGA
+    // Now it's safe to use println
     println!("UNIA OS Kernel Starting...");
     println!("Memory management initialized");
     
-    // Initialize the heap
-    println!("Initializing heap...");
-    match allocator::init_heap() {
-        Ok(_) => println!("Heap initialization successful"),
-        Err(e) => {
-            println!("Heap initialization failed: {}", e);
-            panic!("Failed to initialize heap");
-        }
-    }
-    
     // Test allocations
-    println!("Testing allocations...");
     test_allocations();
     
     // If we get here, the allocations worked!
@@ -86,16 +116,40 @@ fn test_allocations() {
 #[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    println!("\n\nKERNEL PANIC: {}", info);
     serial_println!("\n\nKERNEL PANIC: {}", info);
     
     // Print register state for debugging
-    debug::print_register_state();
+    print_register_state();
     
     // Print additional debug information
-    println!("System halted.");
+    serial_println!("System halted.");
     
     hlt_loop();
+}
+
+// Print register state for debugging
+fn print_register_state() {
+    serial_println!("=== REGISTER STATE ===");
+    
+    let rax: u64;
+    let rbx: u64;
+    let rcx: u64;
+    let rdx: u64;
+    let rsp: u64;
+    let rbp: u64;
+    
+    unsafe {
+        core::arch::asm!("mov {}, rax", out(reg) rax);
+        core::arch::asm!("mov {}, rbx", out(reg) rbx);
+        core::arch::asm!("mov {}, rcx", out(reg) rcx);
+        core::arch::asm!("mov {}, rdx", out(reg) rdx);
+        core::arch::asm!("mov {}, rsp", out(reg) rsp);
+        core::arch::asm!("mov {}, rbp", out(reg) rbp);
+    }
+    
+    serial_println!("RAX: 0x{:016x}  RBX: 0x{:016x}", rax, rbx);
+    serial_println!("RCX: 0x{:016x}  RDX: 0x{:016x}", rcx, rdx);
+    serial_println!("RSP: 0x{:016x}  RBP: 0x{:016x}", rsp, rbp);
 }
 
 #[cfg(test)]
