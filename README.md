@@ -3,7 +3,7 @@
 
 {Unified Neural Interface Architecture} 
 
-A revolutionary open-source operating system specifically designed for AI-powered gaming experiences, integrating real-time LiDAR scanning, mesh networking, advanced AI capabilities, and comprehensive developer tools.
+A revolutionary open-source operating system specifically designed for AI-powered gaming experiences, integrating real-time LiDAR scanning, mesh networking, advanced AI capabilities, and comprehensive developer tools. UNIA OS can be run as a standalone bootable operating system, providing a console-like experience.
 
 ## Vision
 
@@ -202,6 +202,27 @@ cmake ..
 make -j$(nproc)
 ```
 
+### Bootable Experience
+
+UNIA OS can be run as a standalone operating system:
+
+```bash
+# Quick start - automatically builds and runs UNIA OS
+./run_unia_os.sh
+
+# Or manually:
+# Navigate to the boot directory
+cd src/boot
+
+# Run the build script
+./build.sh
+
+# Run in QEMU
+qemu-system-x86_64 -drive format=raw,file=target/x86_64-unia/debug/bootimage-unia-os-bootable.bin
+```
+
+For detailed instructions, see the [Running UNIA OS Guide](./docs/running-unia-os.md) and [Bootable Experience Guide](./docs/bootable-experience-guide.md).
+
 ### System Requirements
 
 #### Development Hardware
@@ -286,6 +307,13 @@ UNIA is an open-source project that welcomes contributions from the community. P
 - [AI Framework](documentation/ai-framework/README.md)
 - [Developer Guide](documentation/developer/README.md) --- coming soon.
 - [API Reference](documentation/api/README.md) -- coming soon.
+- [Bootable Experience Guide](./docs/bootable-experience-guide.md)
+- [Console Experience](./docs/console-experience.md)
+- [QEMU Boot Guide](./docs/qemu-boot-guide.md)
+- [Running UNIA OS](./docs/running-unia-os.md)
+- [Architecture Compatibility](./docs/architecture-compatibility.md)
+- [Web Simulation Guide](./docs/web-simulation-guide.md)
+- [Cloud Testing Infrastructure](./testing/cloud_simulation/README.md)
 
 ## License
 
