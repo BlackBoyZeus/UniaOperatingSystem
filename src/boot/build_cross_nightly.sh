@@ -37,7 +37,7 @@ EOF
 
 # Build the bootable image
 echo "Building kernel with nightly toolchain..."
-RUSTFLAGS="-C link-arg=-nostartfiles" cargo +nightly bootimage --target x86_64-unia.json
+cargo +nightly bootimage --target x86_64-unia.json
 
 # Check if the build was successful
 if [ $? -eq 0 ]; then
