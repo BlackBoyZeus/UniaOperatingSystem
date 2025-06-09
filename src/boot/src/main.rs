@@ -27,27 +27,9 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
         }
     }
     
-    // Initialize serial port directly (no allocations)
-    unsafe {
-        let serial_port = 0x3F8 as *mut u8;
-        // Initialize serial port
-        *serial_port.add(1) = 0x00; // Disable interrupts
-        *serial_port.add(3) = 0x80; // Enable DLAB
-        *serial_port.add(0) = 0x03; // Set divisor to 3 (38400 baud)
-        *serial_port.add(1) = 0x00; // High byte of divisor
-        *serial_port.add(3) = 0x03; // 8 bits, no parity, one stop bit
-        *serial_port.add(2) = 0xC7; // Enable FIFO, clear them, 14-byte threshold
-        *serial_port.add(4) = 0x0B; // IRQs enabled, RTS/DSR set
-        
-        // Write a message to serial
-        let message = b"UNIA OS Serial Initialized\n";
-        for &byte in message {
-            // Wait for transmit buffer to be empty
-            while (*serial_port.add(5) & 0x20) == 0 {}
-            // Send the byte
-            *serial_port.add(0) = byte;
-        }
-    }
+    // Write directly to serial port for debugging
+    serial_println!("UNIA OS Serial Initialized - Direct Write");
+    serial_println!("Testing critical allocator...");
     
     // Initialize the heap first
     serial_println!("Initializing heap...");
@@ -67,8 +49,8 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
     serial_println!("Physical memory offset: {:?}", phys_mem_offset);
     
-    let mut mapper = unsafe { memory::init(phys_mem_offset) };
-    let mut frame_allocator = unsafe {
+    let _mapper = unsafe { memory::init(phys_mem_offset) };
+    let _frame_allocator = unsafe {
         memory::BootInfoFrameAllocator::init(&boot_info.memory_map)
     };
     serial_println!("Memory management initialized");
@@ -81,6 +63,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     test_allocations();
     
     // If we get here, the allocations worked!
+    serial_println!("All allocations successful!");
     println!("All allocations successful!");
     println!("UNIA OS is ready!");
     
