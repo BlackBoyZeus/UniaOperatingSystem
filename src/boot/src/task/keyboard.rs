@@ -101,8 +101,15 @@ impl SimpleKeyboard {
     }
     
     pub fn process_next_scancode(&mut self) -> Option<DecodedKey> {
-        let queue = SCANCODE_QUEUE.try_get()?;
-        let scancode = queue.pop()?;
+        let queue = match SCANCODE_QUEUE.try_get() {
+            Ok(q) => q,
+            Err(_) => return None,
+        };
+        
+        let scancode = match queue.pop() {
+            Some(s) => s,
+            None => return None,
+        };
         
         if let Ok(Some(key_event)) = self.keyboard.add_byte(scancode) {
             return self.keyboard.process_keyevent(key_event);
@@ -115,9 +122,7 @@ impl SimpleKeyboard {
 // Initialize the keyboard handler
 pub fn init_keyboard() -> SimpleKeyboard {
     // Initialize the scancode queue if not already done
-    SCANCODE_QUEUE
-        .try_init_once(|| ArrayQueue::new(100))
-        .expect("Scancode queue already initialized");
+    let _ = SCANCODE_QUEUE.try_init_once(|| ArrayQueue::new(100));
     
     SimpleKeyboard::new()
 }
