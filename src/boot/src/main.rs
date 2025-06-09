@@ -26,7 +26,6 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
         }
     }
     
-    // Write directly to serial port for debugging
     serial_println!("UNIA OS Serial Initialized - Direct Write");
     
     // Initialize memory management first
@@ -53,75 +52,58 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
         }
     }
     
-    // Pre-allocate some memory for critical components
-    serial_println!("Pre-allocating critical memory...");
-    let layouts = [
-        Layout::from_size_align(64, 8).unwrap(),
-        Layout::from_size_align(128, 8).unwrap(),
-        Layout::from_size_align(256, 8).unwrap(),
-    ];
-    
-    let mut critical_ptrs = [core::ptr::null_mut(); 3];
-    for (i, layout) in layouts.iter().enumerate() {
-        unsafe {
-            critical_ptrs[i] = alloc::alloc::alloc(layout.clone());
-            if critical_ptrs[i].is_null() {
-                serial_println!("Critical pre-allocation failed for size {}, align {}", 
-                               layout.size(), layout.align());
-            } else {
-                serial_println!("Critical pre-allocation successful: {:p}", critical_ptrs[i]);
-            }
-        }
-    }
-    
-    // Now initialize basic OS components
-    serial_println!("Initializing basic OS components...");
+    // Initialize basic components
+    serial_println!("Initializing GDT...");
     unia_os_bootable::gdt::init();
-    unia_os_bootable::interrupts::init_idt();
+    serial_println!("GDT initialized");
     
-    // Initialize PIC and enable interrupts only after heap is ready
+    serial_println!("Initializing IDT...");
+    unia_os_bootable::interrupts::init_idt();
+    serial_println!("IDT initialized");
+    
     serial_println!("Initializing PIC...");
     unsafe { unia_os_bootable::interrupts::PICS.lock().initialize() };
+    serial_println!("PIC initialized");
     
+    // Re-enable interrupts
     serial_println!("Re-enabling interrupts");
     x86_64::instructions::interrupts::enable();
-    
-    // Test manual allocation to verify allocator
-    serial_println!("Testing manual allocation...");
-    let layout = Layout::from_size_align(64, 8).unwrap();
-    let ptr = unsafe { alloc::alloc::alloc(layout) };
-    if ptr.is_null() {
-        serial_println!("Manual allocation failed for size 64, align 8");
-    } else {
-        serial_println!("Manual allocation successful: {:p}", ptr);
-        unsafe { alloc::alloc::dealloc(ptr, layout) };
-    }
+    serial_println!("Interrupts enabled");
     
     // Now it's safe to use println
-    serial_println!("Before println! call");
     println!("UNIA OS Kernel Starting...");
-    serial_println!("After first println! call");
     println!("Memory management initialized");
-    serial_println!("After second println! call");
     
-    // Test allocations
-    serial_println!("Starting test allocations");
+    // Test allocations to verify heap is working
+    serial_println!("Testing allocations...");
     test_allocations();
+    serial_println!("Allocation tests passed");
     
-    // If we get here, the allocations worked!
-    serial_println!("All allocations successful!");
-    println!("All allocations successful!");
+    // Try to initialize a minimal UI
+    serial_println!("Attempting to initialize minimal UI...");
     println!("UNIA OS is ready!");
+    println!("Press any key to continue...");
     
-    // Free pre-allocated memory
-    for (i, layout) in layouts.iter().enumerate() {
-        if !critical_ptrs[i].is_null() {
-            unsafe { alloc::alloc::dealloc(critical_ptrs[i], layout.clone()); }
+    // Try to initialize keyboard handling
+    serial_println!("Initializing keyboard handler...");
+    let mut keyboard = unia_os_bootable::task::keyboard::init_keyboard();
+    serial_println!("Keyboard handler initialized");
+    
+    // Try to initialize a simple task executor
+    serial_println!("Initializing simple task executor...");
+    
+    // Enter a simple event loop that just responds to keypresses
+    serial_println!("Entering simple event loop");
+    loop {
+        // Process any pending keyboard events
+        if let Some(key) = keyboard.process_next_scancode() {
+            serial_println!("Key pressed: {:?}", key);
+            println!("Key pressed: {:?}", key);
         }
+        
+        // Yield to CPU
+        x86_64::instructions::hlt();
     }
-    
-    // Just halt - we're just testing allocations
-    hlt_loop();
 }
 
 // Test different allocation sizes
