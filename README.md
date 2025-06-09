@@ -308,6 +308,7 @@ UNIA is an open-source project that welcomes contributions from the community. P
 - [API Reference](documentation/api/README.md) -- coming soon.
 - [Bootable Experience Guide](./docs/bootable-experience-guide.md)
 - [Console Experience](./docs/console-experience.md)
+- [QEMU Boot Guide](./docs/qemu-boot-guide.md)
 - [Running UNIA OS](./docs/running-unia-os.md)
 - [Architecture Compatibility](./docs/architecture-compatibility.md)
 - [Web Simulation Guide](./docs/web-simulation-guide.md)
