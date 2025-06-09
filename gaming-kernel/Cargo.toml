@@ -1,0 +1,46 @@
+[package]
+name = "unia-gaming-os"
+version = "3.0.0"
+edition = "2021"
+authors = ["UNIA Gaming OS Team"]
+description = "Next-Generation AI Gaming Console Operating System"
+
+[dependencies]
+# Core kernel
+bootloader = { version = "0.9.23", features = ["map_physical_memory"] }
+x86_64 = "0.14.10"
+spin = "0.9.8"
+linked_list_allocator = "0.10.5"
+
+# Graphics & Gaming
+embedded-graphics = "0.8"
+tinybmp = "0.5"
+
+# Serialization for game data
+serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
+
+# Async runtime
+async-trait = { version = "0.1", default-features = false }
+futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
+
+# Real-time features
+heapless = { version = "0.8", default-features = false }
+
+[features]
+default = ["ai-acceleration", "ray-tracing", "haptic-feedback"]
+ai-acceleration = []
+ray-tracing = []
+haptic-feedback = []
+cloud-gaming = []
+vr-support = []
+ar-support = []
+
+[profile.dev]
+panic = "abort"
+opt-level = 2
+
+[profile.release]
+panic = "abort"
+opt-level = 3
+lto = true
+codegen-units = 1

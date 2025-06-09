@@ -1,0 +1,51 @@
+[package]
+name = "unia-kernel"
+version = "2.0.0"
+edition = "2021"
+authors = ["UNIA OS Team"]
+description = "Modern microkernel for UNIA Operating System v2.0"
+
+[dependencies]
+# Core dependencies
+bootloader = { version = "0.9.23", features = ["map_physical_memory"] }
+x86_64 = "0.14.10"
+spin = "0.9.8"
+linked_list_allocator = "0.10.5"
+
+# Modern async runtime
+async-trait = { version = "0.1", default-features = false }
+futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
+heapless = { version = "0.8", features = ["serde"] }
+
+# Serialization
+serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
+postcard = { version = "1.0", features = ["alloc"] }
+
+# Cryptography
+sha2 = { version = "0.10", default-features = false }
+aes = { version = "0.8", default-features = false }
+
+# Networking
+smoltcp = { version = "0.11", default-features = false, features = ["std", "async"] }
+
+# Graphics
+embedded-graphics = "0.8"
+tinybmp = "0.5"
+
+[profile.dev]
+panic = "abort"
+opt-level = 2
+
+[profile.release]
+panic = "abort"
+opt-level = 3
+lto = true
+codegen-units = 1
+
+[package.metadata.bootimage]
+test-args = [
+    "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",
+    "-serial", "stdio",
+    "-display", "none"
+]
+test-success-exit-code = 33

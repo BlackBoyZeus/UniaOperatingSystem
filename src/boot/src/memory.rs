@@ -2,9 +2,11 @@ use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 use x86_64::{
     structures::paging::{
         FrameAllocator, Mapper, OffsetPageTable, Page, PageTable, PhysFrame, Size4KiB,
+        PageTableFlags, MappedPageTable, mapper::MapToError,
     },
     PhysAddr, VirtAddr,
 };
+use core::fmt;
 
 /// Initialize a new OffsetPageTable.
 ///
@@ -35,25 +37,49 @@ unsafe fn active_level_4_table(physical_memory_offset: VirtAddr) -> &'static mut
     &mut *page_table_ptr // unsafe
 }
 
-/// Creates an example mapping for the given page to frame `0xb8000`.
-pub fn create_example_mapping(
-    page: Page,
+/// Error type for memory mapping operations
+#[derive(Debug)]
+pub enum MapError {
+    FrameAllocationFailed,
+    MappingError(MapToError<Size4KiB>),
+}
+
+impl fmt::Display for MapError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MapError::FrameAllocationFailed => write!(f, "Frame allocation failed"),
+            MapError::MappingError(e) => write!(f, "Mapping error: {:?}", e),
+        }
+    }
+}
+
+/// Maps the given page to a newly allocated frame with the given flags.
+/// Returns the frame that was used.
+pub fn map_page(
+    page: Page<Size4KiB>,
+    flags: PageTableFlags,
     mapper: &mut OffsetPageTable,
     frame_allocator: &mut impl FrameAllocator<Size4KiB>,
-) {
-    use x86_64::structures::paging::PageTableFlags as Flags;
+) -> Result<PhysFrame<Size4KiB>, MapError> {
+    let frame = frame_allocator
+        .allocate_frame()
+        .ok_or(MapError::FrameAllocationFailed)?;
 
-    let frame = PhysFrame::containing_address(PhysAddr::new(0xb8000));
-    let flags = Flags::PRESENT | Flags::WRITABLE;
+    unsafe {
+        mapper
+            .map_to(page, frame, flags, frame_allocator)
+            .map_err(MapError::MappingError)?
+            .flush();
+    }
 
-    let map_to_result = unsafe { mapper.map_to(page, frame, flags, frame_allocator) };
-    map_to_result.expect("map_to failed").flush();
+    Ok(frame)
 }
 
 /// A FrameAllocator that returns usable frames from the bootloader's memory map.
 pub struct BootInfoFrameAllocator {
     memory_map: &'static MemoryMap,
     next: usize,
+    allocated_frames: usize,
 }
 
 impl BootInfoFrameAllocator {
@@ -66,6 +92,7 @@ impl BootInfoFrameAllocator {
         BootInfoFrameAllocator {
             memory_map,
             next: 0,
+            allocated_frames: 0,
         }
     }
 
@@ -81,12 +108,25 @@ impl BootInfoFrameAllocator {
         // create `PhysFrame` types from the start addresses
         frame_addresses.map(|addr| PhysFrame::containing_address(PhysAddr::new(addr)))
     }
+
+    /// Returns the number of frames allocated so far
+    pub fn allocated_frame_count(&self) -> usize {
+        self.allocated_frames
+    }
+
+    /// Returns the total number of usable frames
+    pub fn total_frames(&self) -> usize {
+        self.usable_frames().count()
+    }
 }
 
 unsafe impl FrameAllocator<Size4KiB> for BootInfoFrameAllocator {
     fn allocate_frame(&mut self) -> Option<PhysFrame> {
         let frame = self.usable_frames().nth(self.next);
-        self.next += 1;
+        if frame.is_some() {
+            self.next += 1;
+            self.allocated_frames += 1;
+        }
         frame
     }
 }

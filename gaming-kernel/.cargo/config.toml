@@ -1,0 +1,17 @@
+[unstable]
+build-std = ["core", "compiler_builtins", "alloc"]
+build-std-features = ["compiler-builtins-mem"]
+
+[build]
+target = "x86_64-unknown-none"
+
+[target.'cfg(target_os = "none")']
+runner = "bootimage runner"
+
+[target.x86_64-unknown-none]
+rustflags = [
+    "-C", "link-arg=--nmagic",
+    "-C", "link-arg=-static",
+    "-C", "link-arg=-zmax-page-size=0x1000",
+    "-C", "link-arg=-no-pie"
+]
