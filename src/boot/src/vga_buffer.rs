@@ -45,9 +45,28 @@ struct ScreenChar {
 const BUFFER_HEIGHT: usize = 25;
 const BUFFER_WIDTH: usize = 80;
 
+// Define a custom Volatile wrapper for ScreenChar
+struct VolatileScreenChar {
+    inner: ScreenChar,
+}
+
+impl VolatileScreenChar {
+    fn new(ch: ScreenChar) -> Self {
+        VolatileScreenChar { inner: ch }
+    }
+    
+    fn read(&self) -> ScreenChar {
+        self.inner
+    }
+    
+    fn write(&mut self, ch: ScreenChar) {
+        self.inner = ch;
+    }
+}
+
 #[repr(transparent)]
 struct Buffer {
-    chars: [[Volatile<ScreenChar>; BUFFER_WIDTH]; BUFFER_HEIGHT],
+    chars: [[VolatileScreenChar; BUFFER_WIDTH]; BUFFER_HEIGHT],
 }
 
 pub struct Writer {
@@ -134,12 +153,49 @@ impl fmt::Write for Writer {
     }
 }
 
+// Initialize the VGA buffer with empty characters
+fn init_buffer() -> Buffer {
+    let mut buffer: Buffer = unsafe { core::mem::zeroed() };
+    let blank = ScreenChar {
+        ascii_character: b' ',
+        color_code: ColorCode::new(Color::White, Color::Black),
+    };
+    
+    for row in 0..BUFFER_HEIGHT {
+        for col in 0..BUFFER_WIDTH {
+            buffer.chars[row][col] = VolatileScreenChar::new(blank);
+        }
+    }
+    
+    buffer
+}
+
 lazy_static! {
-    pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
-        column_position: 0,
-        color_code: ColorCode::new(Color::LightGreen, Color::Black),
-        buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
-    });
+    pub static ref WRITER: Mutex<Writer> = {
+        let buffer = unsafe {
+            // Create a static buffer
+            static mut BUFFER: Buffer = unsafe { core::mem::zeroed() };
+            &mut BUFFER
+        };
+        
+        // Initialize the buffer with empty characters
+        let blank = ScreenChar {
+            ascii_character: b' ',
+            color_code: ColorCode::new(Color::White, Color::Black),
+        };
+        
+        for row in 0..BUFFER_HEIGHT {
+            for col in 0..BUFFER_WIDTH {
+                buffer.chars[row][col] = VolatileScreenChar::new(blank);
+            }
+        }
+        
+        Mutex::new(Writer {
+            column_position: 0,
+            color_code: ColorCode::new(Color::LightGreen, Color::Black),
+            buffer,
+        })
+    };
 }
 
 #[macro_export]

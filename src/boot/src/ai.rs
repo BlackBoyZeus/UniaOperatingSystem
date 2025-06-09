@@ -1,6 +1,5 @@
 use crate::{println, ui};
 use alloc::string::String;
-use core::time::Duration;
 
 pub async fn run_ai_demo() {
     // Simulate AI subsystem initialization
@@ -36,10 +35,10 @@ pub async fn run_ai_demo() {
 async fn delay(ms: u64) {
     // This is a simple delay implementation for demonstration
     // In a real system, we would use a proper timer
-    for _ in 0..ms * 100 {
+    for i in 0..ms * 100 {
         core::hint::spin_loop();
         // Yield to other tasks occasionally
-        if _ % 1000 == 0 {
+        if i % 1000 == 0 {
             crate::task::yield_now().await;
         }
     }
