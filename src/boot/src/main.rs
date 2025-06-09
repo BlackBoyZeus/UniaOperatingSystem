@@ -20,24 +20,30 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     // Initialize the OS components
     unia_os_bootable::init();
     
+    // Initialize early allocator for boot sequence
+    allocator::init_early_allocator();
+    
     // Run the boot sequence animation
     boot_sequence::run_boot_sequence();
     
-    // Initialize heap allocator
+    // Initialize memory management
     let phys_mem_offset = boot_info.physical_memory_offset;
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
     let mut frame_allocator = unsafe {
         memory::BootInfoFrameAllocator::init(&boot_info.memory_map)
     };
     
-    // Initialize heap
+    // Initialize the main heap allocator
+    println!("Initializing heap...");
     allocator::init_heap(&mut mapper, &mut frame_allocator)
         .expect("Heap initialization failed");
+    println!("Heap initialized successfully");
     
-    // Initialize console
+    // Initialize console after heap is ready
     console::init_console();
     
     // Create an executor for async tasks
+    println!("Creating task executor...");
     let mut executor = Executor::new();
     
     // Spawn keyboard task
@@ -60,7 +66,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
 #[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    println!("KERNEL PANIC: {}", info);
+    println!("\n\nKERNEL PANIC: {}", info);
     
     // Print additional debug information
     println!("System halted.");

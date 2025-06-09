@@ -89,7 +89,10 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[alloc_error_handler]
 fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
-    panic!("allocation error: {:?}", layout)
+    panic!("Allocation error: {:?} - size: {}, align: {}", 
+           layout, 
+           layout.size(), 
+           layout.align());
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
