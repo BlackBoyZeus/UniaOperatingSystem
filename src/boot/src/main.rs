@@ -8,12 +8,9 @@ extern crate alloc;
 
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
-use unia_os_bootable::{allocator, hlt_loop, memory, println, serial_println};
+use unia_os_bootable::{allocator, hlt_loop, memory, serial_println};
 use x86_64::VirtAddr;
-use alloc::string::String;
-use alloc::format;
-use alloc::vec::Vec;
-use pc_keyboard::{DecodedKey, KeyCode};
+use pc_keyboard::DecodedKey;
 use core::sync::atomic::{AtomicBool, Ordering};
 
 // Global flags for tracking initialization state
@@ -47,25 +44,11 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     serial_println!("STEP 1: UNIA OS Serial Initialized");
     
     // Initialize memory management first
-    let phys_mem_offset = match VirtAddr::try_new(boot_info.physical_memory_offset) {
-        Some(addr) => {
-            serial_println!("STEP 2: Physical memory offset: {:?}", addr);
-            addr
-        },
-        None => {
-            serial_println!("ERROR: Invalid physical memory offset");
-            panic!("Invalid physical memory offset");
-        }
-    };
+    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
+    serial_println!("STEP 2: Physical memory offset: {:?}", phys_mem_offset);
     
     let mut mapper = unsafe { 
-        match memory::init(phys_mem_offset) {
-            Ok(mapper) => mapper,
-            Err(e) => {
-                serial_println!("ERROR: Failed to initialize memory mapper: {:?}", e);
-                panic!("Failed to initialize memory mapper");
-            }
-        }
+        memory::init(phys_mem_offset)
     };
     
     let mut frame_allocator = unsafe {
@@ -182,7 +165,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
             let seconds = time_value % 60;
             
             // Format time as HH:MM:SS
-            let time_str = format!("{:02}:{:02}:{:02}", hours, minutes, seconds);
+            let time_str = alloc::format!("{:02}:{:02}:{:02}", hours, minutes, seconds);
             if let Err(e) = display_text(&time_str, 1, 70) {
                 serial_println!("WARNING: Failed to update clock: {}", e);
             }
@@ -652,38 +635,6 @@ fn update_status_bar(text: &str) -> Result<(), &'static str> {
     Ok(())
 }
 
-// Test different allocation sizes
-fn test_allocations() {
-    use alloc::vec::Vec;
-    use alloc::string::String;
-    
-    // Test 1: Small allocation (16 bytes)
-    serial_println!("Test 1: 16-byte allocation");
-    let test1 = Vec::<u8>::with_capacity(16);
-    serial_println!("16-byte allocation successful: {:p}", test1.as_ptr());
-    
-    // Test 2: Medium allocation (64 bytes) - this is the problematic one
-    serial_println!("Test 2: 64-byte allocation");
-    let test2 = Vec::<u8>::with_capacity(64);
-    serial_println!("64-byte allocation successful: {:p}", test2.as_ptr());
-    
-    // Test 3: Large allocation (1024 bytes)
-    serial_println!("Test 3: 1024-byte allocation");
-    let test3 = Vec::<u8>::with_capacity(1024);
-    serial_println!("1024-byte allocation successful: {:p}", test3.as_ptr());
-    
-    // Test 4: String allocation
-    serial_println!("Test 4: String allocation");
-    let test4 = String::from("UNIA OS String Test");
-    serial_println!("String allocation successful: {:p} - {}", test4.as_ptr(), test4);
-    
-    // Prevent deallocation to avoid issues
-    core::mem::forget(test1);
-    core::mem::forget(test2);
-    core::mem::forget(test3);
-    core::mem::forget(test4);
-}
-
 /// This function is called on panic.
 #[cfg(not(test))]
 #[panic_handler]
@@ -699,7 +650,7 @@ fn panic(info: &PanicInfo) -> ! {
     // Display panic message on screen
     let _ = clear_screen();
     let _ = display_centered_text("KERNEL PANIC", 10);
-    let _ = display_centered_text(&format!("{}", info), 12);
+    let _ = display_centered_text(&alloc::format!("{}", info), 12);
     let _ = display_centered_text("System Halted", 14);
     
     hlt_loop();
