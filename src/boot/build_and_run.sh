@@ -21,7 +21,7 @@ if [ $? -eq 0 ]; then
     qemu-system-x86_64 \
         -drive format=raw,file=target/x86_64-unia/debug/bootimage-unia-os-bootable.bin \
         -serial file:serial_output.log \
-        -display sdl \
+        -display none \
         -d int \
         -no-reboot
     
