@@ -38,13 +38,22 @@ impl BumpAllocator {
 
 unsafe impl GlobalAlloc for BumpAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        let alloc_start = align_up(self.next, layout.align());
-        let alloc_end = alloc_start.saturating_add(layout.size());
+        let mut next = self.next;
+        
+        // Align the allocation address
+        let alloc_start = align_up(next, layout.align());
+        let alloc_end = match alloc_start.checked_add(layout.size()) {
+            Some(end) => end,
+            None => return null_mut(), // Overflow
+        };
 
         if alloc_end > self.heap_end {
-            null_mut() // Out of memory
+            // Out of memory
+            null_mut()
         } else {
-            self.next = alloc_end;
+            // Update the next allocation position
+            next = alloc_end;
+            self.next = next;
             self.allocations += 1;
             alloc_start as *mut u8
         }
@@ -60,13 +69,16 @@ static BUMP_ALLOCATOR: Mutex<BumpAllocator> = Mutex::new(BumpAllocator::new());
 
 // Main allocator for after heap initialization
 #[global_allocator]
-static ALLOCATOR: LockedHeap = LockedHeap::empty();
+static ALLOCATOR: BumpAllocator = BumpAllocator::new();
 
 // Initialize the early boot allocator
 pub fn init_early_allocator() {
     unsafe {
-        BUMP_ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
+        // Initialize the global allocator directly
+        let mut allocator = ALLOCATOR;
+        allocator.init(HEAP_START, HEAP_SIZE);
     }
+    crate::println!("Early allocator initialized at 0x{:x} with size {} bytes", HEAP_START, HEAP_SIZE);
 }
 
 // Initialize the main heap allocator
@@ -74,6 +86,8 @@ pub fn init_heap(
     mapper: &mut impl Mapper<Size4KiB>,
     frame_allocator: &mut impl FrameAllocator<Size4KiB>,
 ) -> Result<(), MapToError<Size4KiB>> {
+    crate::println!("Mapping heap pages...");
+    
     let page_range = {
         let heap_start = VirtAddr::new(HEAP_START as u64);
         let heap_end = heap_start + HEAP_SIZE - 1u64;
@@ -90,11 +104,35 @@ pub fn init_heap(
         unsafe { mapper.map_to(page, frame, flags, frame_allocator)?.flush() };
     }
 
-    unsafe {
-        ALLOCATOR.lock().init(HEAP_START as *mut u8, HEAP_SIZE);
-    }
+    crate::println!("Heap pages mapped successfully");
+    
+    // Mark heap as initialized
+    crate::mark_heap_initialized();
+    crate::println!("Heap initialization complete");
 
     Ok(())
+}
+
+// Utility function to align addresses
+fn align_up(addr: usize, align: usize) -> usize {
+    (addr + align - 1) & !(align - 1)
+}
+
+// Locked wrapper (unchanged)
+pub struct Locked<A> {
+    inner: spin::Mutex<A>,
+}
+
+impl<A> Locked<A> {
+    pub const fn new(inner: A) -> Self {
+        Locked {
+            inner: spin::Mutex::new(inner),
+        }
+    }
+
+    pub fn lock(&self) -> spin::MutexGuard<A> {
+        self.inner.lock()
+    }
 }
 
 // Utility function to align addresses

@@ -1,10 +1,7 @@
 use crate::{println, vga_buffer};
 use core::fmt::Write;
-use lazy_static::lazy_static;
-use spin::Mutex;
-use alloc::vec::Vec;
 
-// UNIA OS Boot Animation frames
+// UNIA OS Boot Animation frames - Using static strings to avoid allocations
 const BOOT_FRAMES: [&str; 5] = [
     r#"
     █    █ █▄ █ █ ▄▀█    █▀█ █▀
@@ -42,6 +39,8 @@ const COPYRIGHT_TEXT: &str = "© 2025 UNIA OS Team. All rights reserved.";
 const VERSION_TEXT: &str = "UNIA OS v1.0.0";
 
 pub fn run_boot_sequence() {
+    println!("Starting boot sequence...");
+    
     // Clear screen
     clear_screen();
     
@@ -77,6 +76,8 @@ pub fn run_boot_sequence() {
     
     // Clear screen before continuing
     clear_screen();
+    
+    println!("Boot sequence completed");
 }
 
 fn clear_screen() {
@@ -85,26 +86,44 @@ fn clear_screen() {
 }
 
 fn center_text(text: &str, row: usize) {
-    let lines: Vec<&str> = text.lines().collect();
+    // Process text line by line without allocations
     let mut current_row = row;
+    let mut line_start = 0;
+    let mut i = 0;
     
-    for line in lines {
-        if !line.is_empty() {
-            let padding = (80 - line.len()) / 2;
-            let mut writer = vga_buffer::WRITER.lock();
-            
-            // Position cursor
-            writer.set_position(current_row, 0);
-            
-            // Write padding
-            for _ in 0..padding {
-                write!(writer, " ").unwrap();
+    while i <= text.len() {
+        if i == text.len() || text.as_bytes()[i] == b'\n' {
+            // Found end of line or end of text
+            if i > line_start {
+                let line = &text[line_start..i];
+                if !line.is_empty() {
+                    let padding = (80 - line.len()) / 2;
+                    let mut writer = vga_buffer::WRITER.lock();
+                    
+                    // Position cursor
+                    writer.set_position(current_row, 0);
+                    
+                    // Write padding
+                    for _ in 0..padding {
+                        write!(writer, " ").unwrap();
+                    }
+                    
+                    // Write text
+                    write!(writer, "{}", line).unwrap();
+                }
+                current_row += 1;
             }
             
-            // Write text
-            write!(writer, "{}", line).unwrap();
+            if i < text.len() {
+                line_start = i + 1; // Skip the newline character
+            }
         }
-        current_row += 1;
+        
+        if i < text.len() {
+            i += 1;
+        } else {
+            break;
+        }
     }
 }
 
@@ -135,7 +154,7 @@ fn display_loading_bar(row: usize) {
         
         // Draw filled portion
         set_color(vga_buffer::Color::LightBlue, vga_buffer::Color::Black);
-        for _ in 0..i {
+        for j in 0..i {
             write!(writer, "█").unwrap();
         }
         

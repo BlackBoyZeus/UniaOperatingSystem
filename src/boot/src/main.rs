@@ -9,64 +9,83 @@ extern crate alloc;
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
 use unia_os_bootable::{
-    allocator, boot_sequence, console, hlt_loop, memory, println,
-    task::{executor::Executor, keyboard, Task}, ai, network, game
+    allocator, boot_sequence, console, hlt_loop, memory, println, task::{executor::Executor, keyboard, Task}, ai, network, game
 };
 
 entry_point!(kernel_main);
 
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
     println!("UNIA OS Kernel Starting...");
-
-    // Initialize basic interrupts and GDT
+    
+    // Initialize the OS components
     unia_os_bootable::init();
-
+    println!("Basic initialization complete");
+    
     // Initialize early allocator for boot sequence
+    println!("Initializing early allocator...");
     allocator::init_early_allocator();
-    println!("Early allocator initialized");
-
+    
     // Run the boot sequence animation
+    println!("Starting boot sequence...");
     boot_sequence::run_boot_sequence();
-
+    println!("Boot sequence completed");
+    
     // Initialize memory management
+    println!("Initializing memory management...");
     let phys_mem_offset = boot_info.physical_memory_offset;
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
     let mut frame_allocator = unsafe {
         memory::BootInfoFrameAllocator::init(&boot_info.memory_map)
     };
-
+    println!("Memory management initialized");
+    
     // Initialize the main heap allocator
     println!("Initializing heap...");
-    allocator::init_heap(&mut mapper, &mut frame_allocator)
-        .expect("Heap initialization failed");
-    println!("Heap initialized successfully");
-
+    match allocator::init_heap(&mut mapper, &mut frame_allocator) {
+        Ok(_) => println!("Heap initialization successful"),
+        Err(e) => {
+            println!("Heap initialization failed: {:?}", e);
+            panic!("Failed to initialize heap");
+        }
+    }
+    
     // Initialize console after heap is ready
+    println!("Initializing console...");
     console::init_console();
-
+    println!("Console initialized");
+    
     // Create an executor for async tasks
     println!("Creating task executor...");
     let mut executor = Executor::new();
-
-    // Spawn tasks
+    println!("Task executor created");
+    
+    // Spawn keyboard task
+    println!("Spawning keyboard task...");
     executor.spawn(Task::new(keyboard::print_keypresses()));
+    
+    // Spawn demo tasks
+    println!("Spawning demo tasks...");
     executor.spawn(Task::new(ai::run_ai_demo()));
     executor.spawn(Task::new(network::run_network_demo()));
     executor.spawn(Task::new(game::run_game_demo()));
-
+    
     // Run the executor
-    println!("UNIA OS Ready!");
+    println!("UNIA OS Ready! Starting task executor...");
     executor.run();
-
+    
     // This should never be reached
     hlt_loop();
 }
 
+/// This function is called on panic.
 #[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     println!("\n\nKERNEL PANIC: {}", info);
+    
+    // Print additional debug information
     println!("System halted.");
+    
     hlt_loop();
 }
 

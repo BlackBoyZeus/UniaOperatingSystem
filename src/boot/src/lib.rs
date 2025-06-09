@@ -23,6 +23,20 @@ pub mod network;
 pub mod game;
 
 use core::panic::PanicInfo;
+use core::sync::atomic::{AtomicBool, Ordering};
+
+// Flag to track if heap is initialized
+static HEAP_INITIALIZED: AtomicBool = AtomicBool::new(false);
+
+// Function to mark heap as initialized
+pub fn mark_heap_initialized() {
+    HEAP_INITIALIZED.store(true, Ordering::SeqCst);
+}
+
+// Function to check if heap is initialized
+pub fn is_heap_initialized() -> bool {
+    HEAP_INITIALIZED.load(Ordering::SeqCst)
+}
 
 #[cfg(test)]
 use bootloader::{entry_point, BootInfo};
@@ -89,10 +103,17 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[alloc_error_handler]
 fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
-    panic!(
-        "Allocation error: {:?} - size: {}, align: {}",
-        layout, layout.size(), layout.align()
-    );
+    if !is_heap_initialized() {
+        panic!(
+            "Allocation error before heap initialization: {:?} - size: {}, align: {}",
+            layout, layout.size(), layout.align()
+        );
+    } else {
+        panic!(
+            "Allocation error after heap initialization: {:?} - size: {}, align: {}",
+            layout, layout.size(), layout.align()
+        );
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
