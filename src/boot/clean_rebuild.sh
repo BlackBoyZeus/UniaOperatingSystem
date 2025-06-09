@@ -25,9 +25,10 @@ rustup component add rust-src --toolchain nightly
 echo "Killing any running QEMU instances..."
 pkill -f qemu || true
 
-# Rebuild from scratch
+# Rebuild from scratch with bootimage
 echo "Rebuilding from scratch..."
-cargo +nightly build --target x86_64-unia.json
+cargo install bootimage
+cargo +nightly bootimage --target x86_64-unia.json
 
 # Check if the build was successful
 if [ $? -eq 0 ]; then
