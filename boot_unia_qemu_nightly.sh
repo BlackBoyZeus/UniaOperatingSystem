@@ -5,7 +5,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BOOT_DIR="$SCRIPT_DIR/src/boot"
-TARGET_DIR="$BOOT_DIR/target/x86_64-unknown-none/debug"
+TARGET_DIR="$BOOT_DIR/target/x86_64-unia/debug"
 BINARY_NAME="bootimage-unia-os-bootable.bin"
 BINARY_PATH="$TARGET_DIR/$BINARY_NAME"
 

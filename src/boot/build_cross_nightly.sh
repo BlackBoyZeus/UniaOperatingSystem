@@ -21,11 +21,6 @@ if ! command -v bootimage &> /dev/null; then
     cargo +nightly install bootimage
 fi
 
-if ! command -v cargo-xbuild &> /dev/null; then
-    echo "Installing cargo-xbuild..."
-    cargo +nightly install cargo-xbuild
-fi
-
 # Create .cargo/config.toml
 mkdir -p .cargo
 cat > .cargo/config.toml << EOF
@@ -34,7 +29,7 @@ build-std = ["core", "compiler_builtins", "alloc"]
 build-std-features = ["compiler-builtins-mem"]
 
 [build]
-target = "x86_64-unknown-none"
+target = "x86_64-unia.json"
 
 [target.'cfg(target_os = "none")']
 runner = "bootimage runner"
@@ -42,12 +37,12 @@ EOF
 
 # Build the bootable image
 echo "Building kernel with nightly toolchain..."
-RUSTFLAGS="-C link-arg=-nostartfiles" cargo +nightly bootimage --target x86_64-unknown-none
+RUSTFLAGS="-C link-arg=-nostartfiles" cargo +nightly bootimage --target x86_64-unia.json
 
 # Check if the build was successful
 if [ $? -eq 0 ]; then
     echo "Build successful!"
-    echo "Binary location: target/x86_64-unknown-none/debug/bootimage-unia-os-bootable.bin"
+    echo "Binary location: target/x86_64-unia/debug/bootimage-unia-os-bootable.bin"
 else
     echo "Build failed."
     exit 1

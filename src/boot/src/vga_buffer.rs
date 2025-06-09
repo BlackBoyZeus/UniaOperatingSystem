@@ -45,28 +45,9 @@ struct ScreenChar {
 const BUFFER_HEIGHT: usize = 25;
 const BUFFER_WIDTH: usize = 80;
 
-// Define a custom Volatile wrapper for ScreenChar
-struct VolatileScreenChar {
-    inner: ScreenChar,
-}
-
-impl VolatileScreenChar {
-    fn new(ch: ScreenChar) -> Self {
-        VolatileScreenChar { inner: ch }
-    }
-    
-    fn read(&self) -> ScreenChar {
-        self.inner
-    }
-    
-    fn write(&mut self, ch: ScreenChar) {
-        self.inner = ch;
-    }
-}
-
 #[repr(transparent)]
 struct Buffer {
-    chars: [[VolatileScreenChar; BUFFER_WIDTH]; BUFFER_HEIGHT],
+    chars: [[Volatile<ScreenChar>; BUFFER_WIDTH]; BUFFER_HEIGHT],
 }
 
 pub struct Writer {
@@ -88,10 +69,13 @@ impl Writer {
                 let col = self.column_position;
 
                 let color_code = self.color_code;
-                self.buffer.chars[row][col].write(ScreenChar {
-                    ascii_character: byte,
-                    color_code,
-                });
+                unsafe {
+                    // Direct memory access to VGA buffer
+                    let buffer_ptr = 0xb8000 as *mut u8;
+                    let offset = (row * BUFFER_WIDTH + col) * 2;
+                    *buffer_ptr.add(offset) = byte;
+                    *buffer_ptr.add(offset + 1) = color_code.0;
+                }
                 self.column_position += 1;
             }
         }
@@ -111,8 +95,14 @@ impl Writer {
     fn new_line(&mut self) {
         for row in 1..BUFFER_HEIGHT {
             for col in 0..BUFFER_WIDTH {
-                let character = self.buffer.chars[row][col].read();
-                self.buffer.chars[row - 1][col].write(character);
+                unsafe {
+                    // Copy characters from the next row to the current row
+                    let buffer_ptr = 0xb8000 as *mut u8;
+                    let src_offset = (row * BUFFER_WIDTH + col) * 2;
+                    let dst_offset = ((row - 1) * BUFFER_WIDTH + col) * 2;
+                    *buffer_ptr.add(dst_offset) = *buffer_ptr.add(src_offset);
+                    *buffer_ptr.add(dst_offset + 1) = *buffer_ptr.add(src_offset + 1);
+                }
             }
         }
         self.clear_row(BUFFER_HEIGHT - 1);
@@ -120,12 +110,17 @@ impl Writer {
     }
 
     fn clear_row(&mut self, row: usize) {
-        let blank = ScreenChar {
-            ascii_character: b' ',
-            color_code: self.color_code,
-        };
+        let blank = b' ';
+        let color_code = self.color_code;
+        
         for col in 0..BUFFER_WIDTH {
-            self.buffer.chars[row][col].write(blank);
+            unsafe {
+                // Clear the row with spaces
+                let buffer_ptr = 0xb8000 as *mut u8;
+                let offset = (row * BUFFER_WIDTH + col) * 2;
+                *buffer_ptr.add(offset) = blank;
+                *buffer_ptr.add(offset + 1) = color_code.0;
+            }
         }
     }
     
@@ -138,10 +133,8 @@ impl Writer {
     
     pub fn set_position(&mut self, row: usize, col: usize) {
         if row < BUFFER_HEIGHT && col < BUFFER_WIDTH {
-            // We can't actually move the cursor in VGA text mode without more code,
-            // but we can update our internal position for the next write
             self.column_position = col;
-            // The row position is implicit in our implementation
+            // In a real implementation, we would also update the cursor position
         }
     }
 }
@@ -153,49 +146,12 @@ impl fmt::Write for Writer {
     }
 }
 
-// Initialize the VGA buffer with empty characters
-fn init_buffer() -> Buffer {
-    let mut buffer: Buffer = unsafe { core::mem::zeroed() };
-    let blank = ScreenChar {
-        ascii_character: b' ',
-        color_code: ColorCode::new(Color::White, Color::Black),
-    };
-    
-    for row in 0..BUFFER_HEIGHT {
-        for col in 0..BUFFER_WIDTH {
-            buffer.chars[row][col] = VolatileScreenChar::new(blank);
-        }
-    }
-    
-    buffer
-}
-
 lazy_static! {
-    pub static ref WRITER: Mutex<Writer> = {
-        let buffer = unsafe {
-            // Create a static buffer
-            static mut BUFFER: Buffer = unsafe { core::mem::zeroed() };
-            &mut BUFFER
-        };
-        
-        // Initialize the buffer with empty characters
-        let blank = ScreenChar {
-            ascii_character: b' ',
-            color_code: ColorCode::new(Color::White, Color::Black),
-        };
-        
-        for row in 0..BUFFER_HEIGHT {
-            for col in 0..BUFFER_WIDTH {
-                buffer.chars[row][col] = VolatileScreenChar::new(blank);
-            }
-        }
-        
-        Mutex::new(Writer {
-            column_position: 0,
-            color_code: ColorCode::new(Color::LightGreen, Color::Black),
-            buffer,
-        })
-    };
+    pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
+        column_position: 0,
+        color_code: ColorCode::new(Color::LightGreen, Color::Black),
+        buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
+    });
 }
 
 #[macro_export]
