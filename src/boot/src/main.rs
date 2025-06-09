@@ -16,6 +16,16 @@ use x86_64::VirtAddr;
 entry_point!(kernel_main);
 
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
+    // Initialize the heap first - before anything else
+    serial_println!("Initializing heap...");
+    match allocator::init_heap() {
+        Ok(_) => serial_println!("Heap initialization successful"),
+        Err(e) => {
+            serial_println!("Heap initialization failed: {}", e);
+            panic!("Failed to initialize heap");
+        }
+    }
+    
     // Direct VGA buffer manipulation (no allocations)
     unsafe {
         let vga_buffer = 0xb8000 as *mut u8;
@@ -30,16 +40,6 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     // Write directly to serial port for debugging
     serial_println!("UNIA OS Serial Initialized - Direct Write");
     serial_println!("Testing critical allocator...");
-    
-    // Initialize the heap first
-    serial_println!("Initializing heap...");
-    match allocator::init_heap() {
-        Ok(_) => serial_println!("Heap initialization successful"),
-        Err(e) => {
-            serial_println!("Heap initialization failed: {}", e);
-            panic!("Failed to initialize heap");
-        }
-    }
     
     // Initialize basic OS components
     unia_os_bootable::init();
