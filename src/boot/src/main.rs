@@ -10,7 +10,8 @@ use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
 use unia_os_bootable::{allocator, hlt_loop, memory, println, serial_println};
 use x86_64::VirtAddr;
-use core::alloc::Layout;
+use alloc::string::String;
+use alloc::format;
 
 entry_point!(kernel_main);
 
@@ -87,7 +88,10 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
         counter += 1;
         if counter % 10_000_000 == 0 {
             let progress = (counter / 10_000_000) % 10;
-            let progress_str = "=".repeat(progress as usize) + " ".repeat(10 - progress as usize);
+            let equals = "=".repeat(progress as usize);
+            let spaces = " ".repeat(10 - progress as usize);
+            let progress_str = equals + &spaces;
+            
             println!("System alive: [{}>{}] {}", progress_str, " ".repeat(9 - progress as usize), counter / 10_000_000);
             serial_println!("HEARTBEAT: {}", counter / 10_000_000);
             
@@ -101,12 +105,11 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
                     *vga_buffer.add(i * 2 + 1) = 0x0A; // Green on black
                 }
                 
-                // Show counter
-                let counter_str = format!("{}", counter / 10_000_000);
-                for (i, byte) in counter_str.bytes().enumerate() {
-                    *vga_buffer.add((i + 7) * 2) = byte;
-                    *vga_buffer.add((i + 7) * 2 + 1) = 0x0A; // Green on black
-                }
+                // Show counter as individual digits
+                let count_val = counter / 10_000_000;
+                let digit = (count_val % 10) as u8 + b'0';
+                *vga_buffer.add(7 * 2) = digit;
+                *vga_buffer.add(7 * 2 + 1) = 0x0A; // Green on black
             }
         }
         
