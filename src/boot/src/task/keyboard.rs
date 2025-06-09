@@ -1,4 +1,4 @@
-use crate::{print, println, ui, console};
+use crate::{println, ui};
 use conquer_once::spin::OnceCell;
 use core::{
     pin::Pin,
@@ -68,14 +68,14 @@ impl Stream for ScancodeStream {
 
 pub async fn print_keypresses() {
     let mut scancodes = ScancodeStream::new();
-    let mut keyboard = Keyboard::new(layouts::Us104Key, ScancodeSet1, HandleControl::Ignore);
+    let mut keyboard = Keyboard::new(ScancodeSet1::new(), layouts::Us104Key, HandleControl::Ignore);
 
     while let Some(scancode) = scancodes.next().await {
         if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
             if let Some(key) = keyboard.process_keyevent(key_event) {
                 match key {
                     DecodedKey::Unicode(character) => {
-                        // Process the key in the UI dashboard or console
+                        // Process the key in the UI dashboard
                         ui::dashboard::process_key(character);
                     }
                     DecodedKey::RawKey(key) => {

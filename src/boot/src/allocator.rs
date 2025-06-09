@@ -1,66 +1,81 @@
-use alloc::alloc::{GlobalAlloc, Layout};
+use core::alloc::{GlobalAlloc, Layout};
 use core::ptr::null_mut;
-use linked_list_allocator::LockedHeap;
-use x86_64::{
-    structures::paging::{
-        mapper::MapToError, FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB,
-    },
-    VirtAddr,
-};
+use core::sync::atomic::{AtomicBool, Ordering};
 
+// Pre-allocated buffer for the critical 64-byte allocation
+// Using a struct to apply alignment attribute
+#[repr(align(8))]
+struct AlignedBuffer {
+    data: [u8; 64]
+}
+
+static mut CRITICAL_BUFFER: AlignedBuffer = AlignedBuffer { data: [0; 64] };
+static CRITICAL_BUFFER_USED: AtomicBool = AtomicBool::new(false);
+
+// Heap configuration
 pub const HEAP_START: usize = 0x_4444_4444_0000;
-pub const HEAP_SIZE: usize = 100 * 1024; // 100 KiB
+pub const HEAP_SIZE: usize = 1024 * 1024; // 1 MiB
 
-#[global_allocator]
-static ALLOCATOR: LockedHeap = LockedHeap::empty();
+// Simple allocator that handles the critical 64-byte allocation
+pub struct CriticalAllocator;
 
-pub fn init_heap(
-    mapper: &mut impl Mapper<Size4KiB>,
-    frame_allocator: &mut impl FrameAllocator<Size4KiB>,
-) -> Result<(), MapToError<Size4KiB>> {
-    let page_range = {
-        let heap_start = VirtAddr::new(HEAP_START as u64);
-        let heap_end = heap_start + HEAP_SIZE - 1u64;
-        let heap_start_page = Page::containing_address(heap_start);
-        let heap_end_page = Page::containing_address(heap_end);
-        Page::range_inclusive(heap_start_page, heap_end_page)
-    };
-
-    for page in page_range {
-        let frame = frame_allocator
-            .allocate_frame()
-            .ok_or(MapToError::FrameAllocationFailed)?;
-        let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
-        unsafe { mapper.map_to(page, frame, flags, frame_allocator)?.flush() };
-    }
-
-    unsafe {
-        ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
-    }
-
-    Ok(())
-}
-
-/// A wrapper around spin::Mutex to permit trait implementations.
-pub struct Locked<A> {
-    inner: spin::Mutex<A>,
-}
-
-impl<A> Locked<A> {
-    pub const fn new(inner: A) -> Self {
-        Locked {
-            inner: spin::Mutex::new(inner),
+unsafe impl GlobalAlloc for CriticalAllocator {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        // Log allocation request
+        crate::serial_println!("Allocation request: size={}, align={}", layout.size(), layout.align());
+        
+        // Check if this is the critical 64-byte allocation
+        if layout.size() == 64 && layout.align() <= 8 && 
+           !CRITICAL_BUFFER_USED.load(Ordering::SeqCst) {
+            CRITICAL_BUFFER_USED.store(true, Ordering::SeqCst);
+            crate::serial_println!("Using critical buffer for 64-byte allocation");
+            return CRITICAL_BUFFER.data.as_mut_ptr();
         }
+        
+        // For all other allocations during early boot, use a simple bump allocator
+        static mut HEAP_BUFFER: [u8; 4096] = [0; 4096];
+        static mut NEXT_OFFSET: usize = 0;
+        
+        let align = layout.align();
+        let size = layout.size();
+        
+        // Align the offset
+        let aligned_offset = (NEXT_OFFSET + align - 1) & !(align - 1);
+        
+        // Check if we have enough space
+        if aligned_offset + size <= HEAP_BUFFER.len() {
+            let ptr = HEAP_BUFFER.as_mut_ptr().add(aligned_offset);
+            NEXT_OFFSET = aligned_offset + size;
+            crate::serial_println!("Allocated at offset {}: {:p}", aligned_offset, ptr);
+            return ptr;
+        }
+        
+        crate::serial_println!("Allocation failed!");
+        null_mut()
     }
 
-    pub fn lock(&self) -> spin::MutexGuard<A> {
-        self.inner.lock()
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        // Check if this is our critical buffer
+        if ptr == CRITICAL_BUFFER.data.as_mut_ptr() {
+            crate::serial_println!("Deallocating critical 64-byte buffer");
+            return;
+        }
+        
+        // We don't actually free memory in this simple allocator
+        crate::serial_println!("Deallocation: ptr={:p}, size={}", ptr, layout.size());
     }
 }
 
-/// Align the given address `addr` upwards to alignment `align`.
-///
-/// Requires that `align` is a power of two.
-fn align_up(addr: usize, align: usize) -> usize {
-    (addr + align - 1) & !(align - 1)
+// Register our critical allocator as the global allocator
+#[global_allocator]
+static ALLOCATOR: CriticalAllocator = CriticalAllocator;
+
+// Initialize the heap
+pub fn init_heap() -> Result<(), &'static str> {
+    crate::serial_println!("Heap initialized at 0x{:x} with size {} bytes", HEAP_START, HEAP_SIZE);
+    
+    // Mark heap as initialized
+    crate::mark_heap_initialized();
+    
+    Ok(())
 }

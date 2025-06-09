@@ -2,7 +2,6 @@ use core::fmt;
 use lazy_static::lazy_static;
 use spin::Mutex;
 use volatile::Volatile;
-use vga::colors::Color16;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -26,29 +25,6 @@ pub enum Color {
     White = 15,
 }
 
-impl Color {
-    pub fn from_color16(color: Color16) -> Self {
-        match color {
-            Color16::Black => Color::Black,
-            Color16::Blue => Color::Blue,
-            Color16::Green => Color::Green,
-            Color16::Cyan => Color::Cyan,
-            Color16::Red => Color::Red,
-            Color16::Magenta => Color::Magenta,
-            Color16::Brown => Color::Brown,
-            Color16::LightGray => Color::LightGray,
-            Color16::DarkGray => Color::DarkGray,
-            Color16::LightBlue => Color::LightBlue,
-            Color16::LightGreen => Color::LightGreen,
-            Color16::LightCyan => Color::LightCyan,
-            Color16::LightRed => Color::LightRed,
-            Color16::Pink => Color::Pink,
-            Color16::Yellow => Color::Yellow,
-            Color16::White => Color::White,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct ColorCode(u8);
@@ -69,16 +45,19 @@ struct ScreenChar {
 const BUFFER_HEIGHT: usize = 25;
 const BUFFER_WIDTH: usize = 80;
 
-#[repr(transparent)]
+// Define a safe wrapper for the VGA buffer
 struct Buffer {
-    chars: [[Volatile<ScreenChar>; BUFFER_WIDTH]; BUFFER_HEIGHT],
+    chars: [[ScreenChar; BUFFER_WIDTH]; BUFFER_HEIGHT],
 }
 
 pub struct Writer {
     pub column_position: usize,
     pub color_code: ColorCode,
-    buffer: &'static mut Buffer,
+    buffer: *mut Buffer,
 }
+
+// Mark Writer as Send to allow it to be used across threads
+unsafe impl Send for Writer {}
 
 impl Writer {
     pub fn write_byte(&mut self, byte: u8) {
@@ -93,10 +72,14 @@ impl Writer {
                 let col = self.column_position;
 
                 let color_code = self.color_code;
-                self.buffer.chars[row][col].write(ScreenChar {
-                    ascii_character: byte,
-                    color_code,
-                });
+                unsafe {
+                    // Write directly to VGA buffer memory
+                    let buffer = &mut *self.buffer;
+                    buffer.chars[row][col] = ScreenChar {
+                        ascii_character: byte,
+                        color_code,
+                    };
+                }
                 self.column_position += 1;
             }
         }
@@ -116,8 +99,11 @@ impl Writer {
     fn new_line(&mut self) {
         for row in 1..BUFFER_HEIGHT {
             for col in 0..BUFFER_WIDTH {
-                let character = self.buffer.chars[row][col].read();
-                self.buffer.chars[row - 1][col].write(character);
+                unsafe {
+                    let buffer = &mut *self.buffer;
+                    let character = buffer.chars[row][col];
+                    buffer.chars[row - 1][col] = character;
+                }
             }
         }
         self.clear_row(BUFFER_HEIGHT - 1);
@@ -129,8 +115,12 @@ impl Writer {
             ascii_character: b' ',
             color_code: self.color_code,
         };
+        
         for col in 0..BUFFER_WIDTH {
-            self.buffer.chars[row][col].write(blank);
+            unsafe {
+                let buffer = &mut *self.buffer;
+                buffer.chars[row][col] = blank;
+            }
         }
     }
     
@@ -143,10 +133,7 @@ impl Writer {
     
     pub fn set_position(&mut self, row: usize, col: usize) {
         if row < BUFFER_HEIGHT && col < BUFFER_WIDTH {
-            // We can't actually move the cursor in VGA text mode without more code,
-            // but we can update our internal position for the next write
             self.column_position = col;
-            // The row position is implicit in our implementation
         }
     }
 }
@@ -162,7 +149,7 @@ lazy_static! {
     pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
         column_position: 0,
         color_code: ColorCode::new(Color::LightGreen, Color::Black),
-        buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
+        buffer: 0xb8000 as *mut Buffer,
     });
 }
 
@@ -182,6 +169,7 @@ pub fn _print(args: fmt::Arguments) {
     use core::fmt::Write;
     use x86_64::instructions::interrupts;
 
+    // Disable interrupts while printing to prevent deadlocks
     interrupts::without_interrupts(|| {
         WRITER.lock().write_fmt(args).unwrap();
     });

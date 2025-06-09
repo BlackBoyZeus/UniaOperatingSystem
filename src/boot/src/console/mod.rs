@@ -1,4 +1,4 @@
-use crate::{println, vga_buffer};
+use crate::{println, vga_buffer, print};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt::Write;

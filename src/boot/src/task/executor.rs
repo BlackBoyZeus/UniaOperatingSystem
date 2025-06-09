@@ -1,12 +1,14 @@
-use super::Task;
+use super::{Task, TaskId};
 use alloc::{collections::BTreeMap, sync::Arc, task::Wake};
 use core::task::{Context, Poll, Waker};
 use crossbeam_queue::ArrayQueue;
+use core::sync::atomic::{AtomicU64, Ordering};
 
 pub struct Executor {
     tasks: BTreeMap<TaskId, Task>,
     task_queue: Arc<ArrayQueue<TaskId>>,
     waker_cache: BTreeMap<TaskId, Waker>,
+    next_id: AtomicU64,
 }
 
 impl Executor {
@@ -15,33 +17,16 @@ impl Executor {
             tasks: BTreeMap::new(),
             task_queue: Arc::new(ArrayQueue::new(100)),
             waker_cache: BTreeMap::new(),
+            next_id: AtomicU64::new(0),
         }
     }
 
     pub fn spawn(&mut self, task: Task) {
-        let task_id = TaskId::new();
+        let task_id = TaskId(self.next_id.fetch_add(1, Ordering::Relaxed));
         if self.tasks.insert(task_id, task).is_some() {
             panic!("task with same ID already in tasks");
         }
-        self.task_queue.push(task_id).expect("queue full");
-    }
-
-    pub fn run(&mut self) -> ! {
-        loop {
-            self.run_ready_tasks();
-            self.sleep_if_idle();
-        }
-    }
-
-    fn sleep_if_idle(&self) {
-        use x86_64::instructions::interrupts::{self, enable_and_hlt};
-
-        interrupts::disable();
-        if self.task_queue.is_empty() {
-            enable_and_hlt();
-        } else {
-            interrupts::enable();
-        }
+        self.task_queue.push(task_id).expect("task_queue full");
     }
 
     fn run_ready_tasks(&mut self) {
@@ -50,6 +35,7 @@ impl Executor {
             tasks,
             task_queue,
             waker_cache,
+            next_id: _,
         } = self;
 
         while let Some(task_id) = task_queue.pop() {
@@ -71,16 +57,23 @@ impl Executor {
             }
         }
     }
-}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-struct TaskId(u64);
+    pub fn run(&mut self) -> ! {
+        loop {
+            self.run_ready_tasks();
+            self.sleep_if_idle();
+        }
+    }
 
-impl TaskId {
-    fn new() -> Self {
-        use core::sync::atomic::{AtomicU64, Ordering};
-        static NEXT_ID: AtomicU64 = AtomicU64::new(0);
-        TaskId(NEXT_ID.fetch_add(1, Ordering::Relaxed))
+    fn sleep_if_idle(&self) {
+        use x86_64::instructions::interrupts::{self, enable_and_hlt};
+
+        interrupts::disable();
+        if self.task_queue.is_empty() {
+            enable_and_hlt();
+        } else {
+            interrupts::enable();
+        }
     }
 }
 

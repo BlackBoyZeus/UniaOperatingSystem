@@ -3,7 +3,6 @@
 #![feature(custom_test_frameworks)]
 #![feature(abi_x86_interrupt)]
 #![feature(alloc_error_handler)]
-#![feature(const_mut_refs)]
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
@@ -24,6 +23,20 @@ pub mod network;
 pub mod game;
 
 use core::panic::PanicInfo;
+use core::sync::atomic::{AtomicBool, Ordering};
+
+// Flag to track if heap is initialized
+static HEAP_INITIALIZED: AtomicBool = AtomicBool::new(false);
+
+// Function to mark heap as initialized
+pub fn mark_heap_initialized() {
+    HEAP_INITIALIZED.store(true, Ordering::SeqCst);
+}
+
+// Function to check if heap is initialized
+pub fn is_heap_initialized() -> bool {
+    HEAP_INITIALIZED.load(Ordering::SeqCst)
+}
 
 #[cfg(test)]
 use bootloader::{entry_point, BootInfo};
@@ -40,10 +53,19 @@ fn test_kernel_main(_boot_info: &'static BootInfo) -> ! {
 }
 
 pub fn init() {
+    serial_println!("Initializing GDT...");
     gdt::init();
+    
+    serial_println!("Initializing IDT...");
     interrupts::init_idt();
+    
+    serial_println!("Initializing PIC...");
     unsafe { interrupts::PICS.lock().initialize() };
+    
+    serial_println!("Enabling interrupts...");
     x86_64::instructions::interrupts::enable();
+    
+    serial_println!("Basic initialization complete");
 }
 
 pub fn hlt_loop() -> ! {
@@ -90,7 +112,17 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[alloc_error_handler]
 fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
-    panic!("allocation error: {:?}", layout)
+    serial_println!("!!! ALLOCATION ERROR !!!");
+    serial_println!("Layout: size={}, align={}", layout.size(), layout.align());
+    
+    if !is_heap_initialized() {
+        serial_println!("Heap not initialized yet!");
+    }
+    
+    panic!(
+        "Allocation error: {:?} - size: {}, align: {}",
+        layout, layout.size(), layout.align()
+    );
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

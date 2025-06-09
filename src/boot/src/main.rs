@@ -9,57 +9,131 @@ extern crate alloc;
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
 use unia_os_bootable::{
-    allocator,
-    boot_sequence,
-    memory::{self, BootInfoFrameAllocator},
-    println,
-    task::{executor::Executor, keyboard, Task},
-    ui::dashboard::init_dashboard,
+    allocator, hlt_loop, memory, println, serial_println
 };
 use x86_64::VirtAddr;
 
 entry_point!(kernel_main);
 
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
-    // Run the UNIA OS boot sequence
-    boot_sequence::run_boot_sequence();
+    // Direct VGA buffer manipulation (no allocations)
+    unsafe {
+        let vga_buffer = 0xb8000 as *mut u8;
+        let message = b"UNIA OS Starting...";
+        
+        for (i, &byte) in message.iter().enumerate() {
+            *vga_buffer.add(i * 2) = byte;
+            *vga_buffer.add(i * 2 + 1) = 0x0F; // White on black
+        }
+    }
     
-    println!("UNIA OS Bootable Experience");
-    println!("---------------------------");
-    println!("Initializing...");
-
-    // Initialize memory management
+    // Write directly to serial port for debugging
+    serial_println!("UNIA OS Serial Initialized - Direct Write");
+    serial_println!("Testing critical allocator...");
+    
+    // Initialize the heap first
+    serial_println!("Initializing heap...");
+    match allocator::init_heap() {
+        Ok(_) => serial_println!("Heap initialization successful"),
+        Err(e) => {
+            serial_println!("Heap initialization failed: {}", e);
+            panic!("Failed to initialize heap");
+        }
+    }
+    
+    // Initialize basic OS components
     unia_os_bootable::init();
-    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
-    let mut mapper = unsafe { memory::init(phys_mem_offset) };
-    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_map) };
+    serial_println!("Basic initialization complete");
     
-    // Initialize heap allocation
-    allocator::init_heap(&mut mapper, &mut frame_allocator).expect("Heap initialization failed");
+    // Initialize memory management
+    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
+    serial_println!("Physical memory offset: {:?}", phys_mem_offset);
+    
+    let _mapper = unsafe { memory::init(phys_mem_offset) };
+    let _frame_allocator = unsafe {
+        memory::BootInfoFrameAllocator::init(&boot_info.memory_map)
+    };
+    serial_println!("Memory management initialized");
+    
+    // Now it's safe to use println
+    println!("UNIA OS Kernel Starting...");
+    println!("Memory management initialized");
+    
+    // Test allocations
+    test_allocations();
+    
+    // If we get here, the allocations worked!
+    serial_println!("All allocations successful!");
+    println!("All allocations successful!");
+    println!("UNIA OS is ready!");
+    
+    // Just halt - we're just testing allocations
+    hlt_loop();
+}
 
-    // Initialize UI dashboard
-    println!("Initializing UI dashboard...");
-    init_dashboard();
-
-    // Create async executor and tasks
-    let mut executor = Executor::new();
-    executor.spawn(Task::new(keyboard::print_keypresses()));
-    executor.spawn(Task::new(unia_os_bootable::ai::run_ai_demo()));
-    executor.spawn(Task::new(unia_os_bootable::network::run_network_demo()));
-    executor.spawn(Task::new(unia_os_bootable::game::run_game_demo()));
-
-    // Run the executor
-    println!("UNIA OS initialized successfully!");
-    println!("Press any key to interact with the dashboard...");
-    executor.run();
+// Test different allocation sizes
+fn test_allocations() {
+    use alloc::vec::Vec;
+    
+    // Test 1: Small allocation (16 bytes)
+    serial_println!("Test 1: 16-byte allocation");
+    let test1 = Vec::<u8>::with_capacity(16);
+    serial_println!("16-byte allocation successful: {:p}", test1.as_ptr());
+    
+    // Test 2: Medium allocation (64 bytes) - this is the problematic one
+    serial_println!("Test 2: 64-byte allocation");
+    let test2 = Vec::<u8>::with_capacity(64);
+    serial_println!("64-byte allocation successful: {:p}", test2.as_ptr());
+    
+    // Test 3: Large allocation (1024 bytes)
+    serial_println!("Test 3: 1024-byte allocation");
+    let test3 = Vec::<u8>::with_capacity(1024);
+    serial_println!("1024-byte allocation successful: {:p}", test3.as_ptr());
+    
+    // Prevent deallocation to avoid issues
+    core::mem::forget(test1);
+    core::mem::forget(test2);
+    core::mem::forget(test3);
 }
 
 /// This function is called on panic.
 #[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    println!("{}", info);
-    unia_os_bootable::hlt_loop();
+    serial_println!("\n\nKERNEL PANIC: {}", info);
+    
+    // Print register state for debugging
+    print_register_state();
+    
+    // Print additional debug information
+    serial_println!("System halted.");
+    
+    hlt_loop();
+}
+
+// Print register state for debugging
+fn print_register_state() {
+    serial_println!("=== REGISTER STATE ===");
+    
+    let rax: u64;
+    let rbx: u64;
+    let rcx: u64;
+    let rdx: u64;
+    let rsp: u64;
+    let rbp: u64;
+    
+    unsafe {
+        core::arch::asm!("mov {}, rax", out(reg) rax);
+        core::arch::asm!("mov {}, rbx", out(reg) rbx);
+        core::arch::asm!("mov {}, rcx", out(reg) rcx);
+        core::arch::asm!("mov {}, rdx", out(reg) rdx);
+        core::arch::asm!("mov {}, rsp", out(reg) rsp);
+        core::arch::asm!("mov {}, rbp", out(reg) rbp);
+    }
+    
+    serial_println!("RAX: 0x{:016x}  RBX: 0x{:016x}", rax, rbx);
+    serial_println!("RCX: 0x{:016x}  RDX: 0x{:016x}", rcx, rdx);
+    serial_println!("RSP: 0x{:016x}  RBP: 0x{:016x}", rsp, rbp);
 }
 
 #[cfg(test)]

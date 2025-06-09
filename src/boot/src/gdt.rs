@@ -12,7 +12,8 @@ lazy_static! {
             const STACK_SIZE: usize = 4096 * 5;
             static mut STACK: [u8; STACK_SIZE] = [0; STACK_SIZE];
 
-            let stack_start = VirtAddr::from_ptr(unsafe { &STACK });
+            // Use a raw pointer instead of a shared reference to mutable static
+            let stack_start = VirtAddr::from_ptr(unsafe { STACK.as_ptr() });
             let stack_end = stack_start + STACK_SIZE;
             stack_end
         };
