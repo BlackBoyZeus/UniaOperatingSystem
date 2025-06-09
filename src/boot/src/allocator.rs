@@ -1,80 +1,190 @@
+use linked_list_allocator::LockedHeap;
+use x86_64::{
+    structures::paging::{
+        mapper::MapToError, FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB,
+    },
+    VirtAddr,
+};
+use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use core::alloc::{GlobalAlloc, Layout};
-use core::ptr::null_mut;
-use core::sync::atomic::{AtomicBool, Ordering};
+use core::ptr::{self, NonNull};
 
-// Pre-allocated buffer for the critical 64-byte allocation
-// Using a struct to apply alignment attribute
-#[repr(align(8))]
-struct AlignedBuffer {
-    data: [u8; 64]
+pub const HEAP_START: usize = 0x_4444_4444_0000;
+pub const HEAP_SIZE: usize = 2 * 1024 * 1024; // 2 MiB
+
+// Safe wrapper around the allocator
+pub struct SafeAllocator {
+    heap: LockedHeap,
+    initialized: AtomicBool,
 }
 
-static mut CRITICAL_BUFFER: AlignedBuffer = AlignedBuffer { data: [0; 64] };
-static CRITICAL_BUFFER_USED: AtomicBool = AtomicBool::new(false);
+impl SafeAllocator {
+    pub const fn new() -> Self {
+        Self {
+            heap: LockedHeap::empty(),
+            initialized: AtomicBool::new(false),
+        }
+    }
+    
+    pub fn is_initialized(&self) -> bool {
+        self.initialized.load(Ordering::Acquire)
+    }
+    
+    pub unsafe fn init(&self, heap_start: *mut u8, heap_size: usize) {
+        self.heap.lock().init(heap_start, heap_size);
+        self.initialized.store(true, Ordering::Release);
+    }
+}
 
-// Heap configuration
-pub const HEAP_START: usize = 0x_4444_4444_0000;
-pub const HEAP_SIZE: usize = 1024 * 1024; // 1 MiB
-
-// Simple allocator that handles the critical 64-byte allocation
-pub struct CriticalAllocator;
-
-unsafe impl GlobalAlloc for CriticalAllocator {
+unsafe impl GlobalAlloc for SafeAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        // Log allocation request
-        crate::serial_println!("Allocation request: size={}, align={}", layout.size(), layout.align());
-        
-        // Check if this is the critical 64-byte allocation
-        if layout.size() == 64 && layout.align() <= 8 && 
-           !CRITICAL_BUFFER_USED.load(Ordering::SeqCst) {
-            CRITICAL_BUFFER_USED.store(true, Ordering::SeqCst);
-            crate::serial_println!("Using critical buffer for 64-byte allocation");
-            return CRITICAL_BUFFER.data.as_mut_ptr();
+        if !self.is_initialized() {
+            // Use emergency allocation for early boot
+            return emergency_alloc(layout.size(), layout.align());
         }
         
-        // For all other allocations during early boot, use a simple bump allocator
-        static mut HEAP_BUFFER: [u8; 4096] = [0; 4096];
-        static mut NEXT_OFFSET: usize = 0;
-        
-        let align = layout.align();
-        let size = layout.size();
-        
-        // Align the offset
-        let aligned_offset = (NEXT_OFFSET + align - 1) & !(align - 1);
-        
-        // Check if we have enough space
-        if aligned_offset + size <= HEAP_BUFFER.len() {
-            let ptr = HEAP_BUFFER.as_mut_ptr().add(aligned_offset);
-            NEXT_OFFSET = aligned_offset + size;
-            crate::serial_println!("Allocated at offset {}: {:p}", aligned_offset, ptr);
-            return ptr;
-        }
-        
-        crate::serial_println!("Allocation failed!");
-        null_mut()
+        self.heap.alloc(layout)
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        // Check if this is our critical buffer
-        if ptr == CRITICAL_BUFFER.data.as_mut_ptr() {
-            crate::serial_println!("Deallocating critical 64-byte buffer");
+        if !self.is_initialized() {
+            // Handle emergency deallocation
+            emergency_dealloc(ptr);
             return;
         }
         
-        // We don't actually free memory in this simple allocator
-        crate::serial_println!("Deallocation: ptr={:p}, size={}", ptr, layout.size());
+        self.heap.dealloc(ptr, layout)
     }
 }
 
-// Register our critical allocator as the global allocator
 #[global_allocator]
-static ALLOCATOR: CriticalAllocator = CriticalAllocator;
+static ALLOCATOR: SafeAllocator = SafeAllocator::new();
 
-// Initialize the heap
-pub fn init_heap() -> Result<(), &'static str> {
-    crate::serial_println!("Heap initialized at 0x{:x} with size {} bytes", HEAP_START, HEAP_SIZE);
+// Emergency allocation system for early boot
+const EMERGENCY_HEAP_SIZE: usize = 32 * 1024; // 32 KiB
+static mut EMERGENCY_HEAP: [u8; EMERGENCY_HEAP_SIZE] = [0; EMERGENCY_HEAP_SIZE];
+static EMERGENCY_OFFSET: AtomicUsize = AtomicUsize::new(0);
+
+struct EmergencyAllocation {
+    ptr: *mut u8,
+    size: usize,
+    in_use: AtomicBool,
+}
+
+impl EmergencyAllocation {
+    const fn new() -> Self {
+        Self {
+            ptr: ptr::null_mut(),
+            size: 0,
+            in_use: AtomicBool::new(false),
+        }
+    }
+}
+
+// Track emergency allocations for proper cleanup
+static mut EMERGENCY_ALLOCATIONS: [EmergencyAllocation; 32] = [
+    EmergencyAllocation::new(), EmergencyAllocation::new(), EmergencyAllocation::new(), EmergencyAllocation::new(),
+    EmergencyAllocation::new(), EmergencyAllocation::new(), EmergencyAllocation::new(), EmergencyAllocation::new(),
+    EmergencyAllocation::new(), EmergencyAllocation::new(), EmergencyAllocation::new(), EmergencyAllocation::new(),
+    EmergencyAllocation::new(), EmergencyAllocation::new(), EmergencyAllocation::new(), EmergencyAllocation::new(),
+    EmergencyAllocation::new(), EmergencyAllocation::new(), EmergencyAllocation::new(), EmergencyAllocation::new(),
+    EmergencyAllocation::new(), EmergencyAllocation::new(), EmergencyAllocation::new(), EmergencyAllocation::new(),
+    EmergencyAllocation::new(), EmergencyAllocation::new(), EmergencyAllocation::new(), EmergencyAllocation::new(),
+    EmergencyAllocation::new(), EmergencyAllocation::new(), EmergencyAllocation::new(), EmergencyAllocation::new(),
+];
+
+fn emergency_alloc(size: usize, align: usize) -> *mut u8 {
+    crate::serial_println!("Emergency allocation: size={}, align={}", size, align);
     
-    // Mark heap as initialized
+    let aligned_size = (size + align - 1) & !(align - 1);
+    let current_offset = EMERGENCY_OFFSET.load(Ordering::Acquire);
+    let aligned_offset = (current_offset + align - 1) & !(align - 1);
+    
+    if aligned_offset + aligned_size > EMERGENCY_HEAP_SIZE {
+        crate::serial_println!("Emergency allocation failed: out of memory");
+        return ptr::null_mut();
+    }
+    
+    // Try to update the offset
+    if EMERGENCY_OFFSET.compare_exchange(
+        current_offset,
+        aligned_offset + aligned_size,
+        Ordering::AcqRel,
+        Ordering::Relaxed
+    ).is_err() {
+        // Another thread updated the offset, try again
+        return emergency_alloc(size, align);
+    }
+    
+    unsafe {
+        let ptr = EMERGENCY_HEAP.as_mut_ptr().add(aligned_offset);
+        
+        // Record this allocation using raw pointers instead of mutable references
+        let allocations_ptr = EMERGENCY_ALLOCATIONS.as_mut_ptr();
+        for i in 0..EMERGENCY_ALLOCATIONS.len() {
+            let allocation = &mut *allocations_ptr.add(i);
+            if !allocation.in_use.load(Ordering::Acquire) {
+                if allocation.in_use.compare_exchange(
+                    false, true, Ordering::AcqRel, Ordering::Relaxed
+                ).is_ok() {
+                    allocation.ptr = ptr;
+                    allocation.size = aligned_size;
+                    break;
+                }
+            }
+        }
+        
+        // Zero the memory
+        ptr::write_bytes(ptr, 0, aligned_size);
+        crate::serial_println!("Emergency allocation successful: ptr={:p}", ptr);
+        ptr
+    }
+}
+
+fn emergency_dealloc(ptr: *mut u8) {
+    unsafe {
+        // Use raw pointers instead of mutable references
+        let allocations_ptr = EMERGENCY_ALLOCATIONS.as_mut_ptr();
+        for i in 0..EMERGENCY_ALLOCATIONS.len() {
+            let allocation = &mut *allocations_ptr.add(i);
+            if allocation.ptr == ptr && allocation.in_use.load(Ordering::Acquire) {
+                allocation.in_use.store(false, Ordering::Release);
+                allocation.ptr = ptr::null_mut();
+                allocation.size = 0;
+                crate::serial_println!("Emergency deallocation: ptr={:p}", ptr);
+                break;
+            }
+        }
+    }
+}
+
+pub fn init_heap(
+    mapper: &mut impl Mapper<Size4KiB>,
+    frame_allocator: &mut impl FrameAllocator<Size4KiB>,
+) -> Result<(), MapToError<Size4KiB>> {
+    crate::serial_println!("Mapping heap pages...");
+    
+    let page_range = {
+        let heap_start = VirtAddr::new(HEAP_START as u64);
+        let heap_end = heap_start + HEAP_SIZE - 1u64;
+        let heap_start_page = Page::containing_address(heap_start);
+        let heap_end_page = Page::containing_address(heap_end);
+        Page::range_inclusive(heap_start_page, heap_end_page)
+    };
+
+    for page in page_range {
+        let frame = frame_allocator
+            .allocate_frame()
+            .ok_or(MapToError::FrameAllocationFailed)?;
+        let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
+        unsafe { mapper.map_to(page, frame, flags, frame_allocator)?.flush() };
+    }
+
+    unsafe {
+        ALLOCATOR.init(HEAP_START as *mut u8, HEAP_SIZE);
+    }
+    
+    crate::serial_println!("Heap initialized at 0x{:x} with size {} bytes", HEAP_START, HEAP_SIZE);
     crate::mark_heap_initialized();
     
     Ok(())

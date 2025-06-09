@@ -112,12 +112,29 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[alloc_error_handler]
 fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
-    serial_println!("!!! ALLOCATION ERROR !!!");
+    serial_println!("=== ALLOCATION ERROR DETECTED ===");
     serial_println!("Layout: size={}, align={}", layout.size(), layout.align());
     
     if !is_heap_initialized() {
         serial_println!("Heap not initialized yet!");
     }
+    
+    // Special handling for the problematic allocation
+    if layout.size() == 64 && layout.align() == 8 {
+        serial_println!("This is the problematic 64-byte allocation!");
+    }
+    
+    serial_println!("Heap status check:");
+    serial_println!("- Heap start: 0x{:x}", allocator::HEAP_START);
+    serial_println!("- Heap size: {} bytes", allocator::HEAP_SIZE);
+    
+    serial_println!("Possible causes:");
+    serial_println!("1. Heap not initialized before allocation");
+    serial_println!("2. Heap fragmentation");
+    serial_println!("3. Out of memory");
+    serial_println!("4. Alignment issues");
+    
+    serial_println!("=== SYSTEM HALTED ===");
     
     panic!(
         "Allocation error: {:?} - size: {}, align: {}",

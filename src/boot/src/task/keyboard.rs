@@ -1,4 +1,4 @@
-use crate::{println, ui};
+use crate::{println, ui, serial_println};
 use conquer_once::spin::OnceCell;
 use core::{
     pin::Pin,
@@ -20,12 +20,12 @@ static WAKER: AtomicWaker = AtomicWaker::new();
 pub(crate) fn add_scancode(scancode: u8) {
     if let Ok(queue) = SCANCODE_QUEUE.try_get() {
         if let Err(_) = queue.push(scancode) {
-            println!("WARNING: scancode queue full; dropping keyboard input");
+            serial_println!("WARNING: scancode queue full; dropping keyboard input");
         } else {
             WAKER.wake();
         }
     } else {
-        println!("WARNING: scancode queue uninitialized");
+        serial_println!("WARNING: scancode queue uninitialized");
     }
 }
 
@@ -86,4 +86,43 @@ pub async fn print_keypresses() {
             }
         }
     }
+}
+
+// Simple keyboard handler for direct polling
+pub struct SimpleKeyboard {
+    keyboard: Keyboard<layouts::Us104Key, ScancodeSet1>,
+}
+
+impl SimpleKeyboard {
+    pub fn new() -> Self {
+        Self {
+            keyboard: Keyboard::new(ScancodeSet1::new(), layouts::Us104Key, HandleControl::Ignore),
+        }
+    }
+    
+    pub fn process_next_scancode(&mut self) -> Option<DecodedKey> {
+        let queue = match SCANCODE_QUEUE.try_get() {
+            Ok(q) => q,
+            Err(_) => return None,
+        };
+        
+        let scancode = match queue.pop() {
+            Some(s) => s,
+            None => return None,
+        };
+        
+        if let Ok(Some(key_event)) = self.keyboard.add_byte(scancode) {
+            return self.keyboard.process_keyevent(key_event);
+        }
+        
+        None
+    }
+}
+
+// Initialize the keyboard handler
+pub fn init_keyboard() -> SimpleKeyboard {
+    // Initialize the scancode queue if not already done
+    let _ = SCANCODE_QUEUE.try_init_once(|| ArrayQueue::new(100));
+    
+    SimpleKeyboard::new()
 }
