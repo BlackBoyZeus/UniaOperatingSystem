@@ -49,7 +49,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     match allocator::init_heap(&mut mapper, &mut frame_allocator) {
         Ok(_) => serial_println!("Heap initialization successful"),
         Err(e) => {
-            serial_println!("Heap initialization failed: {}", e);
+            serial_println!("Heap initialization failed: {:?}", e);
             panic!("Failed to initialize heap");
         }
     }

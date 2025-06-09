@@ -7,6 +7,7 @@ use x86_64::{
 };
 use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use core::alloc::{GlobalAlloc, Layout};
+use core::ptr::{self, NonNull};
 
 pub const HEAP_START: usize = 0x_4444_4444_0000;
 pub const HEAP_SIZE: usize = 2 * 1024 * 1024; // 2 MiB
@@ -73,7 +74,7 @@ struct EmergencyAllocation {
 impl EmergencyAllocation {
     const fn new() -> Self {
         Self {
-            ptr: core::ptr::null_mut(),
+            ptr: ptr::null_mut(),
             size: 0,
             in_use: AtomicBool::new(false),
         }
@@ -101,7 +102,7 @@ fn emergency_alloc(size: usize, align: usize) -> *mut u8 {
     
     if aligned_offset + aligned_size > EMERGENCY_HEAP_SIZE {
         crate::serial_println!("Emergency allocation failed: out of memory");
-        return core::ptr::null_mut();
+        return ptr::null_mut();
     }
     
     // Try to update the offset
@@ -118,8 +119,10 @@ fn emergency_alloc(size: usize, align: usize) -> *mut u8 {
     unsafe {
         let ptr = EMERGENCY_HEAP.as_mut_ptr().add(aligned_offset);
         
-        // Record this allocation
-        for allocation in &mut EMERGENCY_ALLOCATIONS {
+        // Record this allocation using raw pointers instead of mutable references
+        let allocations_ptr = EMERGENCY_ALLOCATIONS.as_mut_ptr();
+        for i in 0..EMERGENCY_ALLOCATIONS.len() {
+            let allocation = &mut *allocations_ptr.add(i);
             if !allocation.in_use.load(Ordering::Acquire) {
                 if allocation.in_use.compare_exchange(
                     false, true, Ordering::AcqRel, Ordering::Relaxed
@@ -132,7 +135,7 @@ fn emergency_alloc(size: usize, align: usize) -> *mut u8 {
         }
         
         // Zero the memory
-        core::ptr::write_bytes(ptr, 0, aligned_size);
+        ptr::write_bytes(ptr, 0, aligned_size);
         crate::serial_println!("Emergency allocation successful: ptr={:p}", ptr);
         ptr
     }
@@ -140,10 +143,13 @@ fn emergency_alloc(size: usize, align: usize) -> *mut u8 {
 
 fn emergency_dealloc(ptr: *mut u8) {
     unsafe {
-        for allocation in &mut EMERGENCY_ALLOCATIONS {
+        // Use raw pointers instead of mutable references
+        let allocations_ptr = EMERGENCY_ALLOCATIONS.as_mut_ptr();
+        for i in 0..EMERGENCY_ALLOCATIONS.len() {
+            let allocation = &mut *allocations_ptr.add(i);
             if allocation.ptr == ptr && allocation.in_use.load(Ordering::Acquire) {
                 allocation.in_use.store(false, Ordering::Release);
-                allocation.ptr = core::ptr::null_mut();
+                allocation.ptr = ptr::null_mut();
                 allocation.size = 0;
                 crate::serial_println!("Emergency deallocation: ptr={:p}", ptr);
                 break;
