@@ -11,6 +11,7 @@ use core::panic::PanicInfo;
 use unia_os_bootable::{
     allocator, hlt_loop, memory, println, serial_println
 };
+use x86_64::VirtAddr;
 
 entry_point!(kernel_main);
 
@@ -63,8 +64,8 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     serial_println!("Basic initialization complete");
     
     // Initialize memory management
-    let phys_mem_offset = boot_info.physical_memory_offset;
-    serial_println!("Physical memory offset: 0x{:x}", phys_mem_offset);
+    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
+    serial_println!("Physical memory offset: {:?}", phys_mem_offset);
     
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
     let mut frame_allocator = unsafe {
