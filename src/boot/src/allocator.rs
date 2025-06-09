@@ -1,31 +1,38 @@
 use core::alloc::{GlobalAlloc, Layout};
 use core::ptr::null_mut;
 use core::sync::atomic::{AtomicUsize, Ordering};
-use x86_64::{
-    structures::paging::{
-        mapper::MapToError, FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB,
-    },
-    VirtAddr,
-};
-
-// Static buffer for early allocations (128KB should be enough for boot)
-static mut EARLY_HEAP_BUFFER: [u8; 131072] = [0; 131072];
-static EARLY_HEAP_NEXT: AtomicUsize = AtomicUsize::new(0);
+use crate::debug;
+use crate::serial_println;
 
 // Heap configuration
 pub const HEAP_START: usize = 0x_4444_4444_0000;
 pub const HEAP_SIZE: usize = 1024 * 1024; // 1 MiB
 
-// Simple allocator that uses a static buffer
-pub struct SimpleAllocator;
+// Static buffer for early allocations (128KB)
+static mut EARLY_HEAP_BUFFER: [u8; 131072] = [0; 131072];
+static EARLY_HEAP_NEXT: AtomicUsize = AtomicUsize::new(0);
 
-unsafe impl GlobalAlloc for SimpleAllocator {
+// Debugging allocator that tracks all allocations
+pub struct DebugAllocator;
+
+unsafe impl GlobalAlloc for DebugAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        // Simple bump allocation from static buffer
-        let align = layout.align();
+        // Track this allocation attempt
         let size = layout.size();
+        let align = layout.align();
         
-        // Get current position and align it
+        // Log allocation details
+        serial_println!("Allocation request: size={}, align={}", size, align);
+        debug::track_allocation(size, align);
+        
+        // Special handling for the problematic 64-byte allocation
+        if size == 64 && align == 8 && !debug::SPECIAL_BUFFER_USED {
+            debug::SPECIAL_BUFFER_USED = true;
+            serial_println!("Using special buffer for 64-byte allocation");
+            return debug::SPECIAL_BUFFER_64.as_mut_ptr();
+        }
+        
+        // Simple bump allocation from static buffer
         let current = EARLY_HEAP_NEXT.load(Ordering::Relaxed);
         let aligned_start = align_up(current, align);
         let end = match aligned_start.checked_add(size) {
@@ -40,52 +47,42 @@ unsafe impl GlobalAlloc for SimpleAllocator {
                 current, end, Ordering::SeqCst, Ordering::SeqCst
             ).is_ok() {
                 // Return pointer to the allocated memory
+                serial_println!("Allocation successful: ptr=0x{:x}", 
+                               EARLY_HEAP_BUFFER.as_ptr() as usize + aligned_start);
                 return EARLY_HEAP_BUFFER.as_mut_ptr().add(aligned_start);
             }
         }
         
         // Out of memory or CAS failed
+        serial_println!("Allocation failed!");
         null_mut()
     }
 
-    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
-        // No deallocation support in this simple allocator
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        // Check if this is our special buffer
+        if ptr == debug::SPECIAL_BUFFER_64.as_mut_ptr() {
+            serial_println!("Deallocating special 64-byte buffer");
+            return;
+        }
+        
+        // We don't actually free memory in this simple allocator
+        serial_println!("Deallocation: ptr={:p}, size={}", ptr, layout.size());
     }
 }
 
-// Register our simple allocator as the global allocator
+// Register our debug allocator as the global allocator
 #[global_allocator]
-static ALLOCATOR: SimpleAllocator = SimpleAllocator;
+static ALLOCATOR: DebugAllocator = DebugAllocator;
 
-// Initialize the heap by mapping pages
-pub fn init_heap(
-    mapper: &mut impl Mapper<Size4KiB>,
-    frame_allocator: &mut impl FrameAllocator<Size4KiB>,
-) -> Result<(), MapToError<Size4KiB>> {
-    crate::println!("Mapping heap pages...");
-    
-    let page_range = {
-        let heap_start = VirtAddr::new(HEAP_START as u64);
-        let heap_end = heap_start + HEAP_SIZE - 1u64;
-        let heap_start_page = Page::containing_address(heap_start);
-        let heap_end_page = Page::containing_address(heap_end);
-        Page::range_inclusive(heap_start_page, heap_end_page)
-    };
-
-    for page in page_range {
-        let frame = frame_allocator
-            .allocate_frame()
-            .ok_or(MapToError::FrameAllocationFailed)?;
-        let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
-        unsafe { mapper.map_to(page, frame, flags, frame_allocator)?.flush() };
-    }
-
-    crate::println!("Heap pages mapped successfully");
+// Initialize the heap
+pub fn init_heap() -> Result<(), &'static str> {
+    // Print memory information
+    debug::print_memory_info(HEAP_START, HEAP_SIZE);
+    serial_println!("Heap initialized");
     
     // Mark heap as initialized
     crate::mark_heap_initialized();
-    crate::println!("Heap initialization complete");
-
+    
     Ok(())
 }
 

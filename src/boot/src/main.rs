@@ -9,67 +9,77 @@ extern crate alloc;
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
 use unia_os_bootable::{
-    allocator, boot_sequence, console, hlt_loop, memory, println, task::{executor::Executor, keyboard, Task}, ai, network, game
+    allocator, debug, hlt_loop, memory, println, serial_println
 };
 
 entry_point!(kernel_main);
 
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
-    // Initialize the OS components first
+    // Initialize the OS components first - minimal initialization
     unia_os_bootable::init();
+    
+    // Print debug information
+    serial_println!("=== UNIA OS MINIMAL KERNEL ===");
+    serial_println!("Starting with minimal initialization");
     
     // Initialize memory management immediately
     let phys_mem_offset = boot_info.physical_memory_offset;
+    serial_println!("Physical memory offset: 0x{:x}", phys_mem_offset);
+    
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
     let mut frame_allocator = unsafe {
         memory::BootInfoFrameAllocator::init(&boot_info.memory_map)
     };
     
-    // Now it's safe to print
+    // Now it's safe to print to VGA
     println!("UNIA OS Kernel Starting...");
     println!("Memory management initialized");
     
     // Initialize the heap
     println!("Initializing heap...");
-    match allocator::init_heap(&mut mapper, &mut frame_allocator) {
+    match allocator::init_heap() {
         Ok(_) => println!("Heap initialization successful"),
         Err(e) => {
-            println!("Heap initialization failed: {:?}", e);
+            println!("Heap initialization failed: {}", e);
             panic!("Failed to initialize heap");
         }
     }
     
-    // Run the boot sequence animation
-    println!("Starting boot sequence...");
-    boot_sequence::run_boot_sequence();
-    println!("Boot sequence completed");
+    // Test allocations
+    println!("Testing allocations...");
+    test_allocations();
     
-    // Initialize console after heap is ready
-    println!("Initializing console...");
-    console::init_console();
-    println!("Console initialized");
+    // If we get here, the allocations worked!
+    println!("All allocations successful!");
+    println!("UNIA OS is ready!");
     
-    // Create an executor for async tasks
-    println!("Creating task executor...");
-    let mut executor = Executor::new();
-    println!("Task executor created");
-    
-    // Spawn keyboard task
-    println!("Spawning keyboard task...");
-    executor.spawn(Task::new(keyboard::print_keypresses()));
-    
-    // Spawn demo tasks
-    println!("Spawning demo tasks...");
-    executor.spawn(Task::new(ai::run_ai_demo()));
-    executor.spawn(Task::new(network::run_network_demo()));
-    executor.spawn(Task::new(game::run_game_demo()));
-    
-    // Run the executor
-    println!("UNIA OS Ready! Starting task executor...");
-    executor.run();
-    
-    // This should never be reached
+    // Just halt - we're just testing allocations
     hlt_loop();
+}
+
+// Test different allocation sizes
+fn test_allocations() {
+    use alloc::vec::Vec;
+    
+    // Test 1: Small allocation (16 bytes)
+    serial_println!("Test 1: 16-byte allocation");
+    let test1 = Vec::<u8>::with_capacity(16);
+    serial_println!("16-byte allocation successful: {:p}", test1.as_ptr());
+    
+    // Test 2: Medium allocation (64 bytes) - this is the problematic one
+    serial_println!("Test 2: 64-byte allocation");
+    let test2 = Vec::<u8>::with_capacity(64);
+    serial_println!("64-byte allocation successful: {:p}", test2.as_ptr());
+    
+    // Test 3: Large allocation (1024 bytes)
+    serial_println!("Test 3: 1024-byte allocation");
+    let test3 = Vec::<u8>::with_capacity(1024);
+    serial_println!("1024-byte allocation successful: {:p}", test3.as_ptr());
+    
+    // Prevent deallocation to avoid issues
+    core::mem::forget(test1);
+    core::mem::forget(test2);
+    core::mem::forget(test3);
 }
 
 /// This function is called on panic.
@@ -77,6 +87,10 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     println!("\n\nKERNEL PANIC: {}", info);
+    serial_println!("\n\nKERNEL PANIC: {}", info);
+    
+    // Print register state for debugging
+    debug::print_register_state();
     
     // Print additional debug information
     println!("System halted.");

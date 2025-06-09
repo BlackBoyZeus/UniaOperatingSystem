@@ -11,6 +11,7 @@ extern crate alloc;
 pub mod allocator;
 pub mod boot_sequence;
 pub mod console;
+pub mod debug;
 pub mod gdt;
 pub mod interrupts;
 pub mod memory;
@@ -53,10 +54,19 @@ fn test_kernel_main(_boot_info: &'static BootInfo) -> ! {
 }
 
 pub fn init() {
+    serial_println!("Initializing GDT...");
     gdt::init();
+    
+    serial_println!("Initializing IDT...");
     interrupts::init_idt();
+    
+    serial_println!("Initializing PIC...");
     unsafe { interrupts::PICS.lock().initialize() };
+    
+    serial_println!("Enabling interrupts...");
     x86_64::instructions::interrupts::enable();
+    
+    serial_println!("Basic initialization complete");
 }
 
 pub fn hlt_loop() -> ! {
@@ -103,17 +113,20 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[alloc_error_handler]
 fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
+    serial_println!("!!! ALLOCATION ERROR !!!");
+    serial_println!("Layout: size={}, align={}", layout.size(), layout.align());
+    
     if !is_heap_initialized() {
-        panic!(
-            "Allocation error before heap initialization: {:?} - size: {}, align: {}",
-            layout, layout.size(), layout.align()
-        );
-    } else {
-        panic!(
-            "Allocation error after heap initialization: {:?} - size: {}, align: {}",
-            layout, layout.size(), layout.align()
-        );
+        serial_println!("Heap not initialized yet!");
     }
+    
+    // Print register state
+    debug::print_register_state();
+    
+    panic!(
+        "Allocation error: {:?} - size: {}, align: {}",
+        layout, layout.size(), layout.align()
+    );
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
