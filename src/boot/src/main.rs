@@ -8,10 +8,9 @@ extern crate alloc;
 
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
-use unia_os_bootable::{
-    allocator, hlt_loop, memory, println, serial_println
-};
+use unia_os_bootable::{allocator, hlt_loop, memory, println, serial_println};
 use x86_64::VirtAddr;
+use core::alloc::Layout;
 
 entry_point!(kernel_main);
 
@@ -44,6 +43,10 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     };
     serial_println!("Memory management initialized");
     
+    // Disable interrupts during heap initialization to prevent interference
+    serial_println!("Disabling interrupts for heap initialization");
+    x86_64::instructions::interrupts::disable();
+    
     // Initialize the heap - this will set up the main allocator
     serial_println!("Initializing heap...");
     match allocator::init_heap(&mut mapper, &mut frame_allocator) {
@@ -54,11 +57,30 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
         }
     }
     
+    // Re-enable interrupts after heap initialization
+    serial_println!("Re-enabling interrupts");
+    x86_64::instructions::interrupts::enable();
+    
+    // Test manual allocation to verify allocator
+    serial_println!("Testing manual allocation...");
+    let layout = Layout::from_size_align(64, 8).unwrap();
+    let ptr = unsafe { alloc::alloc::alloc(layout) };
+    if ptr.is_null() {
+        serial_println!("Manual allocation failed for size 64, align 8");
+    } else {
+        serial_println!("Manual allocation successful: {:p}", ptr);
+        unsafe { alloc::alloc::dealloc(ptr, layout) };
+    }
+    
     // Now it's safe to use println
+    serial_println!("Before println! call");
     println!("UNIA OS Kernel Starting...");
+    serial_println!("After first println! call");
     println!("Memory management initialized");
+    serial_println!("After second println! call");
     
     // Test allocations
+    serial_println!("Starting test allocations");
     test_allocations();
     
     // If we get here, the allocations worked!
@@ -133,10 +155,4 @@ fn print_register_state() {
     serial_println!("RAX: 0x{:016x}  RBX: 0x{:016x}", rax, rbx);
     serial_println!("RCX: 0x{:016x}  RDX: 0x{:016x}", rcx, rdx);
     serial_println!("RSP: 0x{:016x}  RBP: 0x{:016x}", rsp, rbp);
-}
-
-#[cfg(test)]
-#[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
-    unia_os_bootable::test_panic_handler(info)
 }
