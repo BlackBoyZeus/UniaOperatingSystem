@@ -29,11 +29,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     // Write directly to serial port for debugging
     serial_println!("UNIA OS Serial Initialized - Direct Write");
     
-    // Initialize basic OS components (GDT, IDT) - these don't allocate
-    unia_os_bootable::init();
-    serial_println!("Basic initialization complete");
-    
-    // Initialize memory management
+    // Initialize memory management first
     let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
     serial_println!("Physical memory offset: {:?}", phys_mem_offset);
     
@@ -57,7 +53,36 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
         }
     }
     
-    // Re-enable interrupts after heap initialization
+    // Pre-allocate some memory for critical components
+    serial_println!("Pre-allocating critical memory...");
+    let layouts = [
+        Layout::from_size_align(64, 8).unwrap(),
+        Layout::from_size_align(128, 8).unwrap(),
+        Layout::from_size_align(256, 8).unwrap(),
+    ];
+    
+    let mut critical_ptrs = [core::ptr::null_mut(); 3];
+    for (i, layout) in layouts.iter().enumerate() {
+        unsafe {
+            critical_ptrs[i] = alloc::alloc::alloc(layout.clone());
+            if critical_ptrs[i].is_null() {
+                serial_println!("Critical pre-allocation failed for size {}, align {}", 
+                               layout.size(), layout.align());
+            } else {
+                serial_println!("Critical pre-allocation successful: {:p}", critical_ptrs[i]);
+            }
+        }
+    }
+    
+    // Now initialize basic OS components
+    serial_println!("Initializing basic OS components...");
+    unia_os_bootable::gdt::init();
+    unia_os_bootable::interrupts::init_idt();
+    
+    // Initialize PIC and enable interrupts only after heap is ready
+    serial_println!("Initializing PIC...");
+    unsafe { unia_os_bootable::interrupts::PICS.lock().initialize() };
+    
     serial_println!("Re-enabling interrupts");
     x86_64::instructions::interrupts::enable();
     
@@ -87,6 +112,13 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     serial_println!("All allocations successful!");
     println!("All allocations successful!");
     println!("UNIA OS is ready!");
+    
+    // Free pre-allocated memory
+    for (i, layout) in layouts.iter().enumerate() {
+        if !critical_ptrs[i].is_null() {
+            unsafe { alloc::alloc::dealloc(critical_ptrs[i], layout.clone()); }
+        }
+    }
     
     // Just halt - we're just testing allocations
     hlt_loop();
