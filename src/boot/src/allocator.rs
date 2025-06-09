@@ -3,8 +3,13 @@ use core::ptr::null_mut;
 use core::sync::atomic::{AtomicBool, Ordering};
 
 // Pre-allocated buffer for the critical 64-byte allocation
-#[repr(align(8))]  // Ensure 8-byte alignment
-static mut CRITICAL_BUFFER: [u8; 64] = [0; 64];
+// Using a struct to apply alignment attribute
+#[repr(align(8))]
+struct AlignedBuffer {
+    data: [u8; 64]
+}
+
+static mut CRITICAL_BUFFER: AlignedBuffer = AlignedBuffer { data: [0; 64] };
 static CRITICAL_BUFFER_USED: AtomicBool = AtomicBool::new(false);
 
 // Heap configuration
@@ -24,7 +29,7 @@ unsafe impl GlobalAlloc for CriticalAllocator {
            !CRITICAL_BUFFER_USED.load(Ordering::SeqCst) {
             CRITICAL_BUFFER_USED.store(true, Ordering::SeqCst);
             crate::serial_println!("Using critical buffer for 64-byte allocation");
-            return CRITICAL_BUFFER.as_mut_ptr();
+            return CRITICAL_BUFFER.data.as_mut_ptr();
         }
         
         // For all other allocations during early boot, use a simple bump allocator
@@ -51,7 +56,7 @@ unsafe impl GlobalAlloc for CriticalAllocator {
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         // Check if this is our critical buffer
-        if ptr == CRITICAL_BUFFER.as_mut_ptr() {
+        if ptr == CRITICAL_BUFFER.data.as_mut_ptr() {
             crate::serial_println!("Deallocating critical 64-byte buffer");
             return;
         }

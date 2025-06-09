@@ -154,7 +154,7 @@ fn display_loading_bar(row: usize) {
         
         // Draw filled portion
         set_color(vga_buffer::Color::LightBlue, vga_buffer::Color::Black);
-        for j in 0..i {
+        for _ in 0..i {
             write!(writer, "█").unwrap();
         }
         
