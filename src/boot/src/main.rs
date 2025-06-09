@@ -16,16 +16,6 @@ use x86_64::VirtAddr;
 entry_point!(kernel_main);
 
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
-    // Initialize the heap first - before anything else
-    serial_println!("Initializing heap...");
-    match allocator::init_heap() {
-        Ok(_) => serial_println!("Heap initialization successful"),
-        Err(e) => {
-            serial_println!("Heap initialization failed: {}", e);
-            panic!("Failed to initialize heap");
-        }
-    }
-    
     // Direct VGA buffer manipulation (no allocations)
     unsafe {
         let vga_buffer = 0xb8000 as *mut u8;
@@ -39,9 +29,8 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     
     // Write directly to serial port for debugging
     serial_println!("UNIA OS Serial Initialized - Direct Write");
-    serial_println!("Testing critical allocator...");
     
-    // Initialize basic OS components
+    // Initialize basic OS components (GDT, IDT) - these don't allocate
     unia_os_bootable::init();
     serial_println!("Basic initialization complete");
     
@@ -49,11 +38,21 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
     serial_println!("Physical memory offset: {:?}", phys_mem_offset);
     
-    let _mapper = unsafe { memory::init(phys_mem_offset) };
-    let _frame_allocator = unsafe {
+    let mut mapper = unsafe { memory::init(phys_mem_offset) };
+    let mut frame_allocator = unsafe {
         memory::BootInfoFrameAllocator::init(&boot_info.memory_map)
     };
     serial_println!("Memory management initialized");
+    
+    // Initialize the heap - this will set up the main allocator
+    serial_println!("Initializing heap...");
+    match allocator::init_heap(&mut mapper, &mut frame_allocator) {
+        Ok(_) => serial_println!("Heap initialization successful"),
+        Err(e) => {
+            serial_println!("Heap initialization failed: {}", e);
+            panic!("Failed to initialize heap");
+        }
+    }
     
     // Now it's safe to use println
     println!("UNIA OS Kernel Starting...");

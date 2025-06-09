@@ -3,10 +3,13 @@
 
 set -e
 
-echo "Building UNIA OS with enhanced critical allocator..."
+echo "Building UNIA OS with safe allocator..."
 
 # Ensure nightly toolchain is installed
 rustup toolchain install nightly
+
+# Kill any existing QEMU processes
+pkill -f qemu || true
 
 # Build the kernel
 cargo +nightly build --target x86_64-unia.json
@@ -15,8 +18,8 @@ cargo +nightly build --target x86_64-unia.json
 if [ $? -eq 0 ]; then
     echo "Build successful!"
     
-    # Kill any existing QEMU processes
-    pkill -f qemu || true
+    # Clear previous serial output
+    echo "" > serial_output.log
     
     # Run in QEMU with graphical display for interaction
     echo "Running UNIA OS in QEMU with interactive display..."
