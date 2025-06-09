@@ -13,8 +13,18 @@ use x86_64::VirtAddr;
 use alloc::string::String;
 use alloc::format;
 use alloc::vec::Vec;
+use pc_keyboard::{DecodedKey, KeyCode};
 
 entry_point!(kernel_main);
+
+// Menu options and screens
+enum MenuScreen {
+    Main,
+    Dashboard,
+    Terminal,
+    Settings,
+    Help,
+}
 
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
     // Direct VGA buffer manipulation for initial message
@@ -67,44 +77,21 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     x86_64::instructions::interrupts::enable();
     serial_println!("STEP 9: Interrupts enabled");
     
-    // Clear the screen completely
-    clear_screen();
-    serial_println!("STEP 10: Screen cleared");
+    // Initialize keyboard
+    let mut keyboard = unia_os_bootable::task::keyboard::init_keyboard();
+    serial_println!("STEP 10: Keyboard initialized");
     
-    // Draw a persistent UI frame
-    draw_ui_frame();
-    serial_println!("STEP 11: UI frame drawn");
+    // Initialize UI state
+    let mut current_screen = MenuScreen::Main;
+    let mut selected_option = 0;
+    let mut counter = 0;
     
-    // Display welcome message
-    display_centered_text("Welcome to UNIA OS", 5);
-    display_centered_text("Universal Neural Intelligence Architecture", 6);
-    display_centered_text("Version 0.1.0", 7);
-    serial_println!("STEP 12: Welcome message displayed");
-    
-    // Display system info
-    display_text("System Information:", 10, 5);
-    display_text("- CPU: Virtual x86_64", 11, 5);
-    display_text("- Memory: 256 MB", 12, 5);
-    display_text("- Storage: Virtual Disk", 13, 5);
-    serial_println!("STEP 13: System info displayed");
-    
-    // Display menu options
-    display_text("Menu Options:", 16, 5);
-    display_text("1. System Dashboard", 17, 5);
-    display_text("2. Terminal", 18, 5);
-    display_text("3. Settings", 19, 5);
-    display_text("4. Help", 20, 5);
-    serial_println!("STEP 14: Menu options displayed");
-    
-    // Display status bar
-    update_status_bar("System Ready | Press a key (1-4) to navigate");
-    serial_println!("STEP 15: Status bar displayed");
+    // Draw the main screen
+    draw_main_screen();
+    serial_println!("STEP 11: Main screen drawn");
     
     // Enter the main event loop
-    serial_println!("STEP 16: Entering main event loop");
-    let mut counter = 0;
-    let mut selected_option = 0;
-    
+    serial_println!("STEP 12: Entering main event loop");
     loop {
         counter += 1;
         
@@ -122,34 +109,240 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
             serial_println!("Heartbeat: {}", time_value);
         }
         
-        // Check for keyboard input (simulated for now)
-        if counter % 50_000_000 == 0 {
-            // Simulate menu selection
-            selected_option = (selected_option + 1) % 4;
+        // Check for keyboard input
+        if let Some(key) = keyboard.process_next_scancode() {
+            serial_println!("Key pressed: {:?}", key);
             
-            // Highlight the selected option
-            for i in 0..4 {
-                let row = 17 + i;
-                let highlight = if i == selected_option { 0x70 } else { 0x07 }; // White on black or black on white
-                
-                // Update the color attribute for the entire line
-                unsafe {
-                    let vga_buffer = 0xb8000 as *mut u8;
-                    for col in 0..20 {
-                        *vga_buffer.add((row * 80 + col + 5) * 2 + 1) = highlight;
+            match key {
+                DecodedKey::Unicode('1') => {
+                    selected_option = 0;
+                    highlight_menu_option(selected_option);
+                    update_status_bar("Selected: System Dashboard");
+                },
+                DecodedKey::Unicode('2') => {
+                    selected_option = 1;
+                    highlight_menu_option(selected_option);
+                    update_status_bar("Selected: Terminal");
+                },
+                DecodedKey::Unicode('3') => {
+                    selected_option = 2;
+                    highlight_menu_option(selected_option);
+                    update_status_bar("Selected: Settings");
+                },
+                DecodedKey::Unicode('4') => {
+                    selected_option = 3;
+                    highlight_menu_option(selected_option);
+                    update_status_bar("Selected: Help");
+                },
+                DecodedKey::Unicode('\n') | DecodedKey::Unicode('\r') => {
+                    // Enter key pressed - navigate to selected screen
+                    match selected_option {
+                        0 => {
+                            current_screen = MenuScreen::Dashboard;
+                            draw_dashboard_screen();
+                        },
+                        1 => {
+                            current_screen = MenuScreen::Terminal;
+                            draw_terminal_screen();
+                        },
+                        2 => {
+                            current_screen = MenuScreen::Settings;
+                            draw_settings_screen();
+                        },
+                        3 => {
+                            current_screen = MenuScreen::Help;
+                            draw_help_screen();
+                        },
+                        _ => {}
                     }
-                }
+                },
+                DecodedKey::Unicode('\u{1b}') => { // Escape key
+                    // Return to main menu
+                    current_screen = MenuScreen::Main;
+                    draw_main_screen();
+                    selected_option = 0;
+                    highlight_menu_option(selected_option);
+                },
+                _ => {}
             }
-            
-            // Update status message
-            let status_msg = format!("Selected option: {} | System uptime: {} seconds", 
-                                    selected_option + 1, counter / 10_000_000);
-            update_status_bar(&status_msg);
         }
         
         // Yield to CPU
         if counter % 100_000 == 0 {
             x86_64::instructions::hlt();
+        }
+    }
+}
+
+// Draw the main screen with menu options
+fn draw_main_screen() {
+    // Clear the screen completely
+    clear_screen();
+    
+    // Draw a persistent UI frame
+    draw_ui_frame();
+    
+    // Display welcome message
+    display_centered_text("Welcome to UNIA OS", 5);
+    display_centered_text("Unified Neural Interface Architecture", 6);
+    display_centered_text("Version 0.1.0", 7);
+    
+    // Display system info
+    display_text("System Information:", 10, 5);
+    display_text("- CPU: Virtual x86_64", 11, 5);
+    display_text("- Memory: 256 MB", 12, 5);
+    display_text("- Storage: Virtual Disk", 13, 5);
+    
+    // Display menu options
+    display_text("Menu Options:", 16, 5);
+    display_text("1. System Dashboard", 17, 5);
+    display_text("2. Terminal", 18, 5);
+    display_text("3. Settings", 19, 5);
+    display_text("4. Help", 20, 5);
+    
+    // Display status bar
+    update_status_bar("System Ready | Press a key (1-4) to navigate");
+    
+    // Highlight the first option by default
+    highlight_menu_option(0);
+}
+
+// Draw the dashboard screen
+fn draw_dashboard_screen() {
+    // Clear the screen completely
+    clear_screen();
+    
+    // Draw a persistent UI frame
+    draw_ui_frame();
+    
+    // Display dashboard title
+    display_centered_text("UNIA OS Dashboard", 3);
+    
+    // Display system metrics
+    display_text("System Metrics:", 5, 5);
+    display_text("CPU Usage: 2%", 6, 5);
+    display_text("Memory Usage: 24 MB / 256 MB", 7, 5);
+    display_text("Disk Usage: 12 MB / 100 MB", 8, 5);
+    
+    // Display network status
+    display_text("Network Status:", 10, 5);
+    display_text("Status: Connected", 11, 5);
+    display_text("Interface: Virtual NIC", 12, 5);
+    display_text("IP Address: 192.168.1.100", 13, 5);
+    
+    // Display active processes
+    display_text("Active Processes:", 15, 5);
+    display_text("1. System Kernel", 16, 5);
+    display_text("2. Terminal", 17, 5);
+    display_text("3. Dashboard", 18, 5);
+    
+    // Display status bar
+    update_status_bar("Dashboard | Press ESC to return to main menu");
+}
+
+// Draw the terminal screen
+fn draw_terminal_screen() {
+    // Clear the screen completely
+    clear_screen();
+    
+    // Draw a persistent UI frame
+    draw_ui_frame();
+    
+    // Display terminal title
+    display_centered_text("UNIA OS Terminal", 3);
+    
+    // Display terminal prompt
+    display_text("unia@os:~$ _", 5, 2);
+    
+    // Display some example output
+    display_text("Welcome to the UNIA OS Terminal", 7, 2);
+    display_text("Type 'help' for a list of commands", 8, 2);
+    
+    // Display status bar
+    update_status_bar("Terminal | Press ESC to return to main menu");
+}
+
+// Draw the settings screen
+fn draw_settings_screen() {
+    // Clear the screen completely
+    clear_screen();
+    
+    // Draw a persistent UI frame
+    draw_ui_frame();
+    
+    // Display settings title
+    display_centered_text("UNIA OS Settings", 3);
+    
+    // Display settings categories
+    display_text("System Settings:", 5, 5);
+    display_text("1. Display", 6, 5);
+    display_text("   Resolution: 80x25", 7, 8);
+    display_text("   Color Scheme: Blue", 8, 8);
+    
+    display_text("2. Network", 10, 5);
+    display_text("   Auto-connect: Enabled", 11, 8);
+    display_text("   DHCP: Enabled", 12, 8);
+    
+    display_text("3. Power", 14, 5);
+    display_text("   Sleep after: 30 minutes", 15, 8);
+    display_text("   Performance mode: Balanced", 16, 8);
+    
+    // Display status bar
+    update_status_bar("Settings | Press ESC to return to main menu");
+}
+
+// Draw the help screen
+fn draw_help_screen() {
+    // Clear the screen completely
+    clear_screen();
+    
+    // Draw a persistent UI frame
+    draw_ui_frame();
+    
+    // Display help title
+    display_centered_text("UNIA OS Help", 3);
+    
+    // Display help content
+    display_text("Navigation:", 5, 5);
+    display_text("- Use number keys (1-4) to select menu options", 6, 5);
+    display_text("- Press Enter to navigate to selected option", 7, 5);
+    display_text("- Press ESC to return to the main menu", 8, 5);
+    
+    display_text("About UNIA OS:", 10, 5);
+    display_text("UNIA OS (Unified Neural Interface Architecture) is a", 11, 5);
+    display_text("next-generation operating system designed for advanced", 12, 5);
+    display_text("AI integration and neural interface capabilities.", 13, 5);
+    
+    display_text("For more information, visit:", 15, 5);
+    display_text("https://github.com/BlackBoyZeus/UniaOperatingSystem", 16, 5);
+    
+    // Display status bar
+    update_status_bar("Help | Press ESC to return to main menu");
+}
+
+// Highlight the selected menu option
+fn highlight_menu_option(option: usize) {
+    // Reset all options to normal
+    for i in 0..4 {
+        let row = 17 + i;
+        let color = 0x07; // White on black
+        
+        unsafe {
+            let vga_buffer = 0xb8000 as *mut u8;
+            for col in 0..20 {
+                *vga_buffer.add((row * 80 + col + 5) * 2 + 1) = color;
+            }
+        }
+    }
+    
+    // Highlight the selected option
+    let row = 17 + option;
+    let color = 0x70; // Black on white
+    
+    unsafe {
+        let vga_buffer = 0xb8000 as *mut u8;
+        for col in 0..20 {
+            *vga_buffer.add((row * 80 + col + 5) * 2 + 1) = color;
         }
     }
 }
