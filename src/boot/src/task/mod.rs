@@ -10,6 +10,9 @@ use core::{
 };
 use core::sync::atomic::{AtomicU64, Ordering};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct TaskId(u64);
+
 pub struct Task {
     future: Pin<Box<dyn Future<Output = ()>>>,
 }

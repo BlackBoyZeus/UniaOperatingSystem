@@ -45,16 +45,19 @@ struct ScreenChar {
 const BUFFER_HEIGHT: usize = 25;
 const BUFFER_WIDTH: usize = 80;
 
-#[repr(transparent)]
+// Define a safe wrapper for the VGA buffer
 struct Buffer {
-    chars: [[Volatile<ScreenChar>; BUFFER_WIDTH]; BUFFER_HEIGHT],
+    chars: [[ScreenChar; BUFFER_WIDTH]; BUFFER_HEIGHT],
 }
 
 pub struct Writer {
     pub column_position: usize,
     pub color_code: ColorCode,
-    buffer: &'static mut Buffer,
+    buffer: *mut Buffer,
 }
+
+// Mark Writer as Send to allow it to be used across threads
+unsafe impl Send for Writer {}
 
 impl Writer {
     pub fn write_byte(&mut self, byte: u8) {
@@ -70,11 +73,12 @@ impl Writer {
 
                 let color_code = self.color_code;
                 unsafe {
-                    // Direct memory access to VGA buffer
-                    let buffer_ptr = 0xb8000 as *mut u8;
-                    let offset = (row * BUFFER_WIDTH + col) * 2;
-                    *buffer_ptr.add(offset) = byte;
-                    *buffer_ptr.add(offset + 1) = color_code.0;
+                    // Write directly to VGA buffer memory
+                    let buffer = &mut *self.buffer;
+                    buffer.chars[row][col] = ScreenChar {
+                        ascii_character: byte,
+                        color_code,
+                    };
                 }
                 self.column_position += 1;
             }
@@ -96,12 +100,9 @@ impl Writer {
         for row in 1..BUFFER_HEIGHT {
             for col in 0..BUFFER_WIDTH {
                 unsafe {
-                    // Copy characters from the next row to the current row
-                    let buffer_ptr = 0xb8000 as *mut u8;
-                    let src_offset = (row * BUFFER_WIDTH + col) * 2;
-                    let dst_offset = ((row - 1) * BUFFER_WIDTH + col) * 2;
-                    *buffer_ptr.add(dst_offset) = *buffer_ptr.add(src_offset);
-                    *buffer_ptr.add(dst_offset + 1) = *buffer_ptr.add(src_offset + 1);
+                    let buffer = &mut *self.buffer;
+                    let character = buffer.chars[row][col];
+                    buffer.chars[row - 1][col] = character;
                 }
             }
         }
@@ -110,16 +111,15 @@ impl Writer {
     }
 
     fn clear_row(&mut self, row: usize) {
-        let blank = b' ';
-        let color_code = self.color_code;
+        let blank = ScreenChar {
+            ascii_character: b' ',
+            color_code: self.color_code,
+        };
         
         for col in 0..BUFFER_WIDTH {
             unsafe {
-                // Clear the row with spaces
-                let buffer_ptr = 0xb8000 as *mut u8;
-                let offset = (row * BUFFER_WIDTH + col) * 2;
-                *buffer_ptr.add(offset) = blank;
-                *buffer_ptr.add(offset + 1) = color_code.0;
+                let buffer = &mut *self.buffer;
+                buffer.chars[row][col] = blank;
             }
         }
     }
@@ -134,7 +134,6 @@ impl Writer {
     pub fn set_position(&mut self, row: usize, col: usize) {
         if row < BUFFER_HEIGHT && col < BUFFER_WIDTH {
             self.column_position = col;
-            // In a real implementation, we would also update the cursor position
         }
     }
 }
@@ -150,7 +149,7 @@ lazy_static! {
     pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
         column_position: 0,
         color_code: ColorCode::new(Color::LightGreen, Color::Black),
-        buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
+        buffer: 0xb8000 as *mut Buffer,
     });
 }
 
@@ -170,6 +169,7 @@ pub fn _print(args: fmt::Arguments) {
     use core::fmt::Write;
     use x86_64::instructions::interrupts;
 
+    // Disable interrupts while printing to prevent deadlocks
     interrupts::without_interrupts(|| {
         WRITER.lock().write_fmt(args).unwrap();
     });

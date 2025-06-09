@@ -9,57 +9,63 @@ extern crate alloc;
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
 use unia_os_bootable::{
-    allocator,
-    boot_sequence,
-    memory::{self, BootInfoFrameAllocator},
-    println,
-    task::{executor::Executor, keyboard, Task},
-    ui::dashboard::init_dashboard,
+    allocator, boot_sequence, console, hlt_loop, memory, println, task::{executor::Executor, keyboard, Task}, ai, network, game
 };
-use x86_64::VirtAddr;
 
 entry_point!(kernel_main);
 
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
-    // Run the UNIA OS boot sequence
+    println!("UNIA OS Kernel Starting...");
+    
+    // Initialize the OS components
+    unia_os_bootable::init();
+    
+    // Run the boot sequence animation
     boot_sequence::run_boot_sequence();
     
-    println!("UNIA OS Bootable Experience");
-    println!("---------------------------");
-    println!("Initializing...");
-
-    // Initialize memory management
-    unia_os_bootable::init();
-    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
+    // Initialize heap allocator
+    let phys_mem_offset = boot_info.physical_memory_offset;
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
-    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_map) };
+    let mut frame_allocator = unsafe {
+        memory::BootInfoFrameAllocator::init(&boot_info.memory_map)
+    };
     
-    // Initialize heap allocation
-    allocator::init_heap(&mut mapper, &mut frame_allocator).expect("Heap initialization failed");
-
-    // Initialize UI dashboard
-    println!("Initializing UI dashboard...");
-    init_dashboard();
-
-    // Create async executor and tasks
+    // Initialize heap
+    allocator::init_heap(&mut mapper, &mut frame_allocator)
+        .expect("Heap initialization failed");
+    
+    // Initialize console
+    console::init_console();
+    
+    // Create an executor for async tasks
     let mut executor = Executor::new();
+    
+    // Spawn keyboard task
     executor.spawn(Task::new(keyboard::print_keypresses()));
-    executor.spawn(Task::new(unia_os_bootable::ai::run_ai_demo()));
-    executor.spawn(Task::new(unia_os_bootable::network::run_network_demo()));
-    executor.spawn(Task::new(unia_os_bootable::game::run_game_demo()));
-
+    
+    // Spawn demo tasks
+    executor.spawn(Task::new(ai::run_ai_demo()));
+    executor.spawn(Task::new(network::run_network_demo()));
+    executor.spawn(Task::new(game::run_game_demo()));
+    
     // Run the executor
-    println!("UNIA OS initialized successfully!");
-    println!("Press any key to interact with the dashboard...");
+    println!("UNIA OS Ready!");
     executor.run();
+    
+    // This should never be reached
+    hlt_loop();
 }
 
 /// This function is called on panic.
 #[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    println!("{}", info);
-    unia_os_bootable::hlt_loop();
+    println!("KERNEL PANIC: {}", info);
+    
+    // Print additional debug information
+    println!("System halted.");
+    
+    hlt_loop();
 }
 
 #[cfg(test)]
