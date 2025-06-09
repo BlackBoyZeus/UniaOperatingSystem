@@ -1,10 +1,11 @@
 use alloc::string::String;
 use alloc::vec::Vec;
+use alloc::vec;
 use alloc::boxed::Box;
 use core::sync::atomic::{AtomicUsize, Ordering};
 use lazy_static::lazy_static;
 use spin::Mutex;
-use crate::println;
+use crate::{println, print};
 
 // Dashboard state
 lazy_static! {
@@ -45,7 +46,7 @@ pub struct NavItem {
     action: Box<dyn Fn() + Send>,
 }
 
-#[derive(PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum View {
     Dashboard,
     Games,
@@ -244,13 +245,13 @@ impl Dashboard {
 }
 
 pub fn init_dashboard() {
-    let mut dashboard = DASHBOARD.lock();
+    let dashboard = DASHBOARD.lock();
     dashboard.render();
 }
 
 pub fn set_view(view: View) {
     let mut dashboard = DASHBOARD.lock();
-    dashboard.current_view = view;
+    dashboard.current_view = view.clone();
     
     // Update navigation active states
     for item in &mut dashboard.navigation {

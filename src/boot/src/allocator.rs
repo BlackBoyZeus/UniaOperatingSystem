@@ -1,5 +1,5 @@
 use alloc::alloc::{GlobalAlloc, Layout};
-use core::ptr::null_mut;
+use core::ptr;
 use linked_list_allocator::LockedHeap;
 use x86_64::{
     structures::paging::{
@@ -35,7 +35,7 @@ pub fn init_heap(
     }
 
     unsafe {
-        ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
+        ALLOCATOR.lock().init(HEAP_START as *mut u8, HEAP_SIZE);
     }
 
     Ok(())

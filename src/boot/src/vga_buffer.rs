@@ -2,7 +2,6 @@ use core::fmt;
 use lazy_static::lazy_static;
 use spin::Mutex;
 use volatile::Volatile;
-use vga::colors::Color16;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,29 +23,6 @@ pub enum Color {
     Pink = 13,
     Yellow = 14,
     White = 15,
-}
-
-impl Color {
-    pub fn from_color16(color: Color16) -> Self {
-        match color {
-            Color16::Black => Color::Black,
-            Color16::Blue => Color::Blue,
-            Color16::Green => Color::Green,
-            Color16::Cyan => Color::Cyan,
-            Color16::Red => Color::Red,
-            Color16::Magenta => Color::Magenta,
-            Color16::Brown => Color::Brown,
-            Color16::LightGray => Color::LightGray,
-            Color16::DarkGray => Color::DarkGray,
-            Color16::LightBlue => Color::LightBlue,
-            Color16::LightGreen => Color::LightGreen,
-            Color16::LightCyan => Color::LightCyan,
-            Color16::LightRed => Color::LightRed,
-            Color16::Pink => Color::Pink,
-            Color16::Yellow => Color::Yellow,
-            Color16::White => Color::White,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
