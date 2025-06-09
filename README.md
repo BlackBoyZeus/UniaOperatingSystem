@@ -1,4 +1,5 @@
 # UNIA: Open Source AI Gaming Operating System
+{Unified Neural Interface Architecutre}
 
 {Unified Neural Interface Architecture} 
 
