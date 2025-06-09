@@ -92,7 +92,7 @@ The game is built using:
 
 ```bash
 # Clone the repository
-git clone https://github.com/BlackBoyZeus/UniaOperatingSystem.git
+git clone https://github.com/Ultrabrainai/UniaOperatingSystem.git
 cd UniaOperatingSystem
 
 # Build the example

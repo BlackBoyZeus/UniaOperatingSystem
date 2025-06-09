@@ -190,7 +190,7 @@ tar xf vulkan-sdk.tar.gz
 
 2. Clone Repository
 ```bash
-git clone https://github.com/BlackBoyZeus/UniaOperatingSystem.git
+git clone https://github.com/Ultrabrainai/UniaOperatingSystem.git
 cd UniaOperatingSystem
 ```
 

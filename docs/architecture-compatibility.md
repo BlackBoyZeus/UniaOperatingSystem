@@ -89,6 +89,6 @@ We are working on expanding architecture support for UNIA OS:
 
 If you encounter issues related to architecture compatibility:
 
-1. Check the [GitHub Issues](https://github.com/BlackBoyZeus/UniaOperatingSystem/issues) for similar problems
+1. Check the [GitHub Issues](https://github.com/Ultrabrainai/UniaOperatingSystem/issues) for similar problems
 2. Join our [Discord community](https://discord.gg/unia-os) for real-time support
 3. Post a detailed description of your issue on our [forums](https://forums.unia-os.org)

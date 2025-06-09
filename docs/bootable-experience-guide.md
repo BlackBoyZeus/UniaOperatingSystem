@@ -33,7 +33,7 @@ Before building the bootable experience, ensure you have the following installed
 
 1. **Clone the repository** (if you haven't already):
    ```bash
-   git clone https://github.com/BlackBoyZeus/UniaOperatingSystem.git
+   git clone https://github.com/Ultrabrainai/UniaOperatingSystem.git
    cd UniaOperatingSystem
    ```
 

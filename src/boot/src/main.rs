@@ -460,7 +460,7 @@ fn draw_help_screen() -> Result<(), &'static str> {
     display_text("AI integration and neural interface capabilities.", 13, 5)?;
     
     display_text("For more information, visit:", 15, 5)?;
-    display_text("https://github.com/BlackBoyZeus/UniaOperatingSystem", 16, 5)?;
+    display_text("https://github.com/Ultrabrainai/UniaOperatingSystem", 16, 5)?;
     
     // Display status bar
     update_status_bar("Help | Press ESC to return to main menu")?;

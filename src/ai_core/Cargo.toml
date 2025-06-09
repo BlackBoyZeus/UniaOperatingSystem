@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["UNIA Contributors"]
 description = "Core AI framework for the UNIA Operating System"
 license = "MIT"
-repository = "https://github.com/BlackBoyZeus/UniaOperatingSystem"
+repository = "https://github.com/Ultrabrainai/UniaOperatingSystem"
 
 [dependencies]
 # Core dependencies
