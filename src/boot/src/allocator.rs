@@ -29,7 +29,7 @@ impl SafeAllocator {
         self.initialized.load(Ordering::Acquire)
     }
     
-    pub unsafe fn init(&self, heap_start: usize, heap_size: usize) {
+    pub unsafe fn init(&self, heap_start: *mut u8, heap_size: usize) {
         self.heap.lock().init(heap_start, heap_size);
         self.initialized.store(true, Ordering::Release);
     }
@@ -175,7 +175,7 @@ pub fn init_heap(
     }
 
     unsafe {
-        ALLOCATOR.init(HEAP_START, HEAP_SIZE);
+        ALLOCATOR.init(HEAP_START as *mut u8, HEAP_SIZE);
     }
     
     crate::serial_println!("Heap initialized at 0x{:x} with size {} bytes", HEAP_START, HEAP_SIZE);

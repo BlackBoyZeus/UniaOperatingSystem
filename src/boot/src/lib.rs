@@ -122,13 +122,6 @@ fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
     // Special handling for the problematic allocation
     if layout.size() == 64 && layout.align() == 8 {
         serial_println!("This is the problematic 64-byte allocation!");
-        
-        // Try to provide more context about where this is happening
-        #[cfg(feature = "track_caller")]
-        {
-            let caller = core::panic::Location::caller();
-            serial_println!("Called from: {}:{}", caller.file(), caller.line());
-        }
     }
     
     serial_println!("Heap status check:");
